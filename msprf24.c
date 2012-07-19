@@ -4,9 +4,25 @@
  *
  * Serial interfaces supported:
  * 1. USI - developed on MSP430G2231
+ * 2. USCI_A - developed on MSP430G2553
+ * 3. USCI_B - developed on MSP430G2553
  *
  * MSP430-specific code inspired/derived from dkedr's nrf24 library posted on the 43oh forums:
  * http://www.43oh.com/forum/viewtopic.php?f=10&t=2572
+ *
+ *
+ * Copyright (c) 2012, Eric Brundick <spirilis@linux.com>
+ *
+ * Permission to use, copy, modify, and/or distribute this software for any purpose
+ * with or without fee is hereby granted, provided that the above copyright notice
+ * and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+ * REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
+ * FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT,
+ * OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE,
+ * DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS
+ * ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
 #include <msp430.h>
