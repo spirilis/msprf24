@@ -402,7 +402,7 @@ char rf_status;
  * the IRQ port ISR--user application issuing LPMx sleep or polling should watch for this to
  * determine if the wakeup reason was due to nRF24 IRQ.
  */
-char rf_irq;
+volatile char rf_irq;
 
 
 
