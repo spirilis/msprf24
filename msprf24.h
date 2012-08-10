@@ -35,7 +35,7 @@ extern char rf_status;
 /* Test this against RF24_IRQ_FLAGGED to see if the nRF24's IRQ was raised; it also
  * holds the last recorded IRQ status from msprf24_irq_get_reason();
  */
-extern char rf_irq;
+extern volatile char rf_irq;
 
 /* RF speed settings -- nRF24L01+ compliant, older nRF24L01 does not have 2Mbps. */
 #define RF24_SPEED_250KBPS  0x20
