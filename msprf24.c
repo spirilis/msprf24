@@ -63,6 +63,7 @@ char spi_transfer(char inb)
 	USISRL = inb;
 	USICNT = 8;            // Start SPI transfer
 	LPM0;                  // Light sleep while transferring
+	USICTL1 &= ~USIIE;
 	return USISRL;
 }
 
@@ -73,6 +74,7 @@ int spi_transfer16(int inw)
 	USISR = inw;
 	USICNT = 16 | USI16B;  // Start 16-bit SPI transfer
 	LPM0;
+	USICTL1 &= ~USIIE;
 	return USISR;
 }
 #endif
@@ -788,7 +790,7 @@ void msprf24_irq_clear(char irqflag)
 #ifdef __MSP430_HAS_USI__
 #pragma vector = USI_VECTOR
 __interrupt void USI_TXRX (void) {
-	USICTL1 &= ~(USIIFG|USIIE);  // Clear interrupt
+	USICTL1 &= ~USIIFG;  // Clear interrupt
         __bic_SR_register_on_exit(LPM0_bits);    // Clear LPM0 bits from 0(SR)
 }
 #endif
