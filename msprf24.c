@@ -453,6 +453,12 @@ void msprf24_init()
 	#endif
 	CE_DIS;
 
+	/* Straw-man spi_transfer with no Chip Select lines enabled; this is to workaround errata bug USI5
+	 * on the MSP430G2452 and related (see http://www.ti.com/lit/er/slaz072/slaz072.pdf)
+	 * Shouldn't hurt anything since we expect no CS lines enabled by the user during this function's execution.
+	 */
+	spi_transfer(RF24_NOP);
+
 	// Wait 100ms for RF transceiver to initialize.
 	char c = 20;
 	for (; c; c--) {
