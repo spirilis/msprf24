@@ -213,7 +213,7 @@ void w_reg(char addr, char data)
 {
 	int i;
 	CSN_EN;
-	i = spi_transfer16( data | (((addr & RF24_REGISTER_MASK) | RF24_W_REGISTER) << 8) );
+	i = spi_transfer16( (data & 0x00FF) | (((addr & RF24_REGISTER_MASK) | RF24_W_REGISTER) << 8) );
 	rf_status = (char) ((i & 0xFF00) >> 8);
 	CSN_DIS;
 }
@@ -254,7 +254,7 @@ void w_tx_payload(char len, char *data)
 	CSN_EN;
 	if (len % 2) {  // Odd payload size?  Make it even by stuffing the command in a 16-bit xfer
 		// Borrowing 'i' to extract STATUS...
-		i = spi_transfer16((RF24_W_TX_PAYLOAD << 8) | data[0]);
+		i = spi_transfer16( (RF24_W_TX_PAYLOAD << 8) | (0x00FF & data[0]) );
 		rf_status = (i & 0xFF00) >> 8;
 		i = 1;
 	} else {
@@ -262,7 +262,7 @@ void w_tx_payload(char len, char *data)
 	}
 	for (; i < len; i+=2) {
 		// SPI transfers MSB first
-		spi_transfer16( (data[i] << 8) | data[i+1] );
+		spi_transfer16( (data[i] << 8) | (0x00FF & data[i+1]) );
 	}
 	CSN_DIS;
 }
@@ -276,7 +276,7 @@ void w_tx_payload_noack(char len, char *data)
 	CSN_EN;
 	if (len % 2) {
 		// Borrowing 'i' to extract STATUS...
-		i = spi_transfer16((RF24_W_TX_PAYLOAD_NOACK << 8) | data[0]);
+		i = spi_transfer16( (RF24_W_TX_PAYLOAD_NOACK << 8) | (0x00FF & data[0]) );
 		rf_status = (i & 0xFF00) >> 8;
 		i = 1;
 	} else {
@@ -284,7 +284,7 @@ void w_tx_payload_noack(char len, char *data)
 	}
 	for (; i < len; i+=2) {
 		// SPI transfers MSB first
-		spi_transfer16( (data[i] << 8) | data[i+1] );
+		spi_transfer16( (data[i] << 8) | (0x00FF & data[i+1]) );
 	}
 	CSN_DIS;
 }
@@ -375,7 +375,7 @@ void w_ack_payload(char pipe, char len, char *data)
 
 	if (len % 2) {
 		// Borrowing 'i' to extract STATUS...
-		i = spi_transfer16(((RF24_W_ACK_PAYLOAD | pipe) << 8) | data[0]);
+		i = spi_transfer16( ((RF24_W_ACK_PAYLOAD | pipe) << 8) | (0x00FF & data[0]) );
 		rf_status = (i & 0xFF00) >> 8;
 		i = 1;
 	} else {
@@ -383,7 +383,7 @@ void w_ack_payload(char pipe, char len, char *data)
 	}
 	for (; i < len; i+=2) {
 		// SPI transfers MSB first
-		spi_transfer16( (data[i] << 8) | data[i+1] );
+		spi_transfer16( (data[i] << 8) | (0x00FF & data[i+1]) );
 	}
 	CSN_DIS;
 }
