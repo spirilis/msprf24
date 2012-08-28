@@ -744,7 +744,7 @@ char msprf24_queue_state()
  */
 unsigned char msprf24_scan()
 {
-	int testcount = 1024;
+	int testcount = 1023;
 	unsigned int rpdcount = 0;
 	char last_state;
 
