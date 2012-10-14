@@ -62,7 +62,9 @@ char spi_transfer(char inb)
 	USICTL1 |= USIIE;
 	USISRL = inb;
 	USICNT = 8;            // Start SPI transfer
-	LPM0;                  // Light sleep while transferring
+	do {
+		LPM0;                  // Light sleep while transferring
+	} while (USICNT & 0x1F);
 	USICTL1 &= ~USIIE;
 	return USISRL;
 }
@@ -73,7 +75,9 @@ int spi_transfer16(int inw)
 	USICTL1 |= USIIE;
 	USISR = inw;
 	USICNT = 16 | USI16B;  // Start 16-bit SPI transfer
-	LPM0;
+	do {
+		LPM0;                  // Light sleep while transferring
+	} while (USICNT & 0x1F);
 	USICTL1 &= ~USIIE;
 	return USISR;
 }
@@ -100,7 +104,9 @@ char spi_transfer(char inb)
 	#ifdef RF24_SPI_DRIVER_USCI_USE_IRQ
 	IE2 |= UCA0RXIE;
 	UCA0TXBUF = inb;
-	LPM0;
+	do {
+		LPM0;
+	} while (UCA0STAT & UCBUSY);
 	#else
 	UCA0TXBUF = inb;
 	while ( !(IFG2 & UCA0RXIFG) )  // Wait for RXIFG indicating remote byte received via SOMI
@@ -116,7 +122,9 @@ int spi_transfer16(int inw)
 	#ifdef RF24_SPI_DRIVER_USCI_USE_IRQ
 	IE2 |= UCA0RXIE;
 	UCA0TXBUF = (inw >> 8) & 0xFF;  // Send MSB first...
-	LPM0;
+	do {
+		LPM0;
+	} while (UCA0STAT & UCBUSY);
 	#else
 	UCA0TXBUF = (inw >> 8) & 0xFF;
 	while ( !(IFG2 & UCA0RXIFG) )
@@ -126,7 +134,9 @@ int spi_transfer16(int inw)
 	#ifdef RF24_SPI_DRIVER_USCI_USE_IRQ
 	IE2 |= UCA0RXIE;
 	UCA0TXBUF = inw & 0xFF;
-	LPM0;
+	do {
+		LPM0;
+	} while (UCA0STAT & UCBUSY);
 	#else
 	UCA0TXBUF = inw & 0xFF;
 	while ( !(IFG2 & UCA0RXIFG) )
@@ -157,7 +167,9 @@ char spi_transfer(char inb)
 	#ifdef RF24_SPI_DRIVER_USCI_USE_IRQ
 	IE2 |= UCB0RXIE;
 	UCB0TXBUF = inb;
-	LPM0;
+	do {
+		LPM0;
+	} while (UCB0STAT & UCBUSY);
 	#else
 	UCB0TXBUF = inb;
 	while ( !(IFG2 & UCB0RXIFG) )  // Wait for RXIFG indicating remote byte received via SOMI
@@ -173,7 +185,9 @@ int spi_transfer16(int inw)
 	#ifdef RF24_SPI_DRIVER_USCI_USE_IRQ
 	IE2 |= UCB0RXIE;
 	UCB0TXBUF = (inw >> 8) & 0xFF;  // Send MSB first...
-	LPM0;
+	do {
+		LPM0;
+	} while (UCB0STAT & UCBUSY);
 	#else
 	UCB0TXBUF = (inw >> 8) & 0xFF;
 	while ( !(IFG2 & UCB0RXIFG) )
@@ -183,7 +197,9 @@ int spi_transfer16(int inw)
 	#ifdef RF24_SPI_DRIVER_USCI_USE_IRQ
 	IE2 |= UCB0RXIE;
 	UCB0TXBUF = inw & 0xFF;
-	LPM0;
+	do {
+		LPM0;
+	} while (UCB0STAT & UCBUSY);
 	#else
 	UCB0TXBUF = inw & 0xFF;
 	while ( !(IFG2 & UCB0RXIFG) )
