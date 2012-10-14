@@ -768,6 +768,7 @@ unsigned char msprf24_scan()
 // Get IRQ flag status
 char msprf24_get_irq_reason()
 {
+	rf_irq &= ~RF24_IRQ_FLAGGED;
 	CSN_EN;
 	rf_status = spi_transfer(RF24_NOP);
 	CSN_DIS;
