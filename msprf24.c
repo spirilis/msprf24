@@ -745,7 +745,7 @@ void msprf24_activate_tx()
 {
 	msprf24_standby();
 	// Cancel any outstanding TX interrupt
-	w_reg(RF24_STATUS, RF24_TX_DS);
+	w_reg(RF24_STATUS, RF24_TX_DS|RF24_MAX_RT);
 
 	// Pulse CE for 10us to activate PTX
 	pulse_ce();
