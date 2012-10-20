@@ -364,7 +364,7 @@ void tx_reuse_lastpayload()
 inline void pulse_ce()
 {
 	CE_EN;
-	__delay_cycles(DELAY_CYCLES_10US);
+	__delay_cycles(DELAY_CYCLES_15US);
 	CE_DIS;
 }
 
