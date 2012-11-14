@@ -553,7 +553,7 @@ void msprf24_open_pipe(char pipeid, char autoack)
 
 	if (autoack)
 		enaa |= (1 << pipeid);
-	if (!autoack)
+	else
 		enaa &= ~(1 << pipeid);
 	rxen |= (1 << pipeid);
 	w_reg(RF24_EN_RXADDR, rxen);
