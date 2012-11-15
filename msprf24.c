@@ -159,7 +159,7 @@ void spi_init()
 	UCB0CTL0 = UCCKPH | UCMSB | UCMST | UCMODE_0 | UCSYNC;  // SPI mode 0, master
 	UCB0BR0 = 0x01;  // SPI clocked at same speed as SMCLK
 	UCB0BR1 = 0x00;
-	UCB0CTL1 = UCSSEL_2;  // Clock = SMCLK, clear UCSWRST and enables USCI_A module.
+	UCB0CTL1 = UCSSEL_2;  // Clock = SMCLK, clear UCSWRST and enables USCI_B module.
 }
 
 char spi_transfer(char inb)
