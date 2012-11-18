@@ -83,7 +83,7 @@ extern volatile unsigned char rf_irq;
 
 // SPI driver needs to provide these
 void spi_init();
-unsigned char spi_transfer(unsigned char);  // SPI xfer 1 byte
+char spi_transfer(char);  // SPI xfer 1 byte
 int spi_transfer16(int);  // SPI xfer 2 bytes
 
 // Register & FIFO I/O

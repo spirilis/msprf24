@@ -57,7 +57,7 @@ void spi_init()
 	USISR = 0x0000;
 }
 
-unsigned char spi_transfer(unsigned char inb)
+char spi_transfer(char inb)
 {
 	USICTL1 |= USIIE;
 	USISRL = inb;
@@ -99,7 +99,7 @@ void spi_init()
 	UCA0CTL1 = UCSSEL_2;  // Clock = SMCLK, clear UCSWRST and enables USCI_A module.
 }
 
-unsigned char spi_transfer(unsigned char inb)
+char spi_transfer(char inb)
 {
 	#ifdef RF24_SPI_DRIVER_USCI_USE_IRQ
 	IE2 |= UCA0RXIE;
@@ -162,7 +162,7 @@ void spi_init()
 	UCB0CTL1 = UCSSEL_2;  // Clock = SMCLK, clear UCSWRST and enables USCI_B module.
 }
 
-unsigned char spi_transfer(unsigned char inb)
+char spi_transfer(char inb)
 {
 	#ifdef RF24_SPI_DRIVER_USCI_USE_IRQ
 	IE2 |= UCB0RXIE;
