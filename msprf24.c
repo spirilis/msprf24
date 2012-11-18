@@ -57,7 +57,7 @@ void spi_init()
 	USISR = 0x0000;
 }
 
-char spi_transfer(char inb)
+unsigned char spi_transfer(unsigned char inb)
 {
 	USICTL1 |= USIIE;
 	USISRL = inb;
@@ -99,7 +99,7 @@ void spi_init()
 	UCA0CTL1 = UCSSEL_2;  // Clock = SMCLK, clear UCSWRST and enables USCI_A module.
 }
 
-char spi_transfer(char inb)
+unsigned char spi_transfer(unsigned char inb)
 {
 	#ifdef RF24_SPI_DRIVER_USCI_USE_IRQ
 	IE2 |= UCA0RXIE;
@@ -162,7 +162,7 @@ void spi_init()
 	UCB0CTL1 = UCSSEL_2;  // Clock = SMCLK, clear UCSWRST and enables USCI_B module.
 }
 
-char spi_transfer(char inb)
+unsigned char spi_transfer(unsigned char inb)
 {
 	#ifdef RF24_SPI_DRIVER_USCI_USE_IRQ
 	IE2 |= UCB0RXIE;
@@ -214,23 +214,23 @@ int spi_transfer16(int inw)
 
 
 /* Basic I/O to the device. */
-char r_reg(char addr)
+unsigned char r_reg(unsigned char addr)
 {
 	int i;
 
 	CSN_EN;
 	i = spi_transfer16(RF24_NOP | ((addr & RF24_REGISTER_MASK) << 8));
-	rf_status = (char) ((i & 0xFF00) >> 8);
+	rf_status = (unsigned char) ((i & 0xFF00) >> 8);
 	CSN_DIS;
-	return (char) (i & 0x00FF);
+	return (unsigned char) (i & 0x00FF);
 }
 
-void w_reg(char addr, char data)
+void w_reg(unsigned char addr, char data)
 {
 	int i;
 	CSN_EN;
 	i = spi_transfer16( (data & 0x00FF) | (((addr & RF24_REGISTER_MASK) | RF24_W_REGISTER) << 8) );
-	rf_status = (char) ((i & 0xFF00) >> 8);
+	rf_status = (unsigned char) ((i & 0xFF00) >> 8);
 	CSN_DIS;
 }
 
@@ -246,7 +246,7 @@ void w_tx_addr(char *addr)
 	CSN_DIS;
 }
 
-void w_rx_addr(char pipe, char *addr)
+void w_rx_addr(unsigned char pipe, char *addr)
 {
 	int i;
 
@@ -264,7 +264,7 @@ void w_rx_addr(char pipe, char *addr)
 	CSN_DIS;
 }
 
-void w_tx_payload(char len, char *data)
+void w_tx_payload(unsigned char len, char *data)
 {
 	int i=0;
 	CSN_EN;
@@ -283,7 +283,7 @@ void w_tx_payload(char len, char *data)
 	CSN_DIS;
 }
 
-void w_tx_payload_noack(char len, char *data)
+void w_tx_payload_noack(unsigned char len, char *data)
 {
 	int i=0;
 
@@ -305,18 +305,18 @@ void w_tx_payload_noack(char len, char *data)
 	CSN_DIS;
 }
 
-char r_rx_peek_payload_size()
+unsigned char r_rx_peek_payload_size()
 {
 	int i;
 
 	CSN_EN;
 	i = spi_transfer16(RF24_NOP | (RF24_R_RX_PL_WID << 8));
-	rf_status = (char) ((i & 0xFF00) >> 8);
+	rf_status = (unsigned char) ((i & 0xFF00) >> 8);
 	CSN_DIS;
-	return (char) (i & 0x00FF);
+	return (unsigned char) (i & 0x00FF);
 }
 
-char r_rx_payload(char len, char *data)
+unsigned char r_rx_payload(unsigned char len, char *data)
 {
 	int i=0,j;
 	CSN_EN;
@@ -379,7 +379,7 @@ inline void pulse_ce()
  * When this occurs, the PRX will still only notify its microcontroller of the payload once (the PID field in the packet uniquely
  * identifies it so the PRX knows it's the same packet being retransmitted) but it's obviously wasting on-air time (and power).
  */
-void w_ack_payload(char pipe, char len, char *data)
+void w_ack_payload(unsigned char pipe, unsigned char len, char *data)
 {
 	int i=0;
 	CSN_EN;
@@ -410,17 +410,17 @@ void w_ack_payload(char pipe, char len, char *data)
 
 
 /* Configuration parameters used to set-up the RF configuration */
-char rf_crc;
-char rf_addr_width;
-char rf_speed_power;
-char rf_channel;
+unsigned char rf_crc;
+unsigned char rf_addr_width;
+unsigned char rf_speed_power;
+unsigned char rf_channel;
 /* Status variable updated every time SPI I/O is performed */
-char rf_status;
+unsigned char rf_status;
 /* IRQ state is stored in here after msprf24_get_irq_reason(), RF24_IRQ_FLAGGED raised during
  * the IRQ port ISR--user application issuing LPMx sleep or polling should watch for this to
  * determine if the wakeup reason was due to nRF24 IRQ.
  */
-volatile char rf_irq;
+volatile unsigned char rf_irq;
 
 
 
@@ -476,7 +476,7 @@ void msprf24_init()
 	spi_transfer(RF24_NOP);
 
 	// Wait 100ms for RF transceiver to initialize.
-	char c = 20;
+	unsigned char c = 20;
 	for (; c; c--) {
 		__delay_cycles(DELAY_CYCLES_5MS);
 	}
@@ -500,7 +500,7 @@ void msprf24_init()
 	flush_rx();
 }
 
-void msprf24_enable_feature(char feature)
+void msprf24_enable_feature(unsigned char feature)
 {
 	if ( (rf_feature & feature) != feature ) {
 		rf_feature |= feature;
@@ -509,7 +509,7 @@ void msprf24_enable_feature(char feature)
 	}
 }
 
-void msprf24_disable_feature(char feature)
+void msprf24_disable_feature(unsigned char feature)
 {
 	if ( (rf_feature & feature) == feature ) {
 		rf_feature &= ~feature;
@@ -517,9 +517,9 @@ void msprf24_disable_feature(char feature)
 	}
 }
 
-void msprf24_close_pipe(char pipeid)
+void msprf24_close_pipe(unsigned char pipeid)
 {
-	char rxen, enaa;
+	unsigned char rxen, enaa;
 
 	if (pipeid < 0 || pipeid > 5)
 		return;
@@ -541,9 +541,9 @@ void msprf24_close_pipe_all()
 	w_reg(RF24_DYNPD, 0x00);
 }
 
-void msprf24_open_pipe(char pipeid, char autoack)
+void msprf24_open_pipe(unsigned char pipeid, unsigned char autoack)
 {
-	char rxen, enaa;
+	unsigned char rxen, enaa;
 
 	if (pipeid < 0 || pipeid > 5)
 		return;
@@ -560,9 +560,9 @@ void msprf24_open_pipe(char pipeid, char autoack)
 	w_reg(RF24_EN_AA, enaa);
 }
 
-char msprf24_pipe_isopen(char pipeid)
+unsigned char msprf24_pipe_isopen(unsigned char pipeid)
 {
-	char rxen;
+	unsigned char rxen;
 
 	if (pipeid < 0 || pipeid > 5)
 		return 0;
@@ -572,9 +572,9 @@ char msprf24_pipe_isopen(char pipeid)
 	return ( (1<<pipeid) == (rxen & (1<<pipeid)) );
 }
 
-void msprf24_set_pipe_packetsize(char pipe, char size)
+void msprf24_set_pipe_packetsize(unsigned char pipe, unsigned char size)
 {
-	char dynpdcfg;
+	unsigned char dynpdcfg;
 
 	if (pipe < 0 || pipe > 5)
 		return;
@@ -598,7 +598,7 @@ void msprf24_set_pipe_packetsize(char pipe, char size)
 
 void msprf24_set_retransmit_delay(int us)
 {
-	char c;
+	unsigned char c;
 
 	// using 'c' to evaluate current RF speed
 	c = rf_speed_power & RF24_SPEED_MASK;
@@ -612,48 +612,49 @@ void msprf24_set_retransmit_delay(int us)
 	// using 'c' to save current value of ARC (auto-retrans-count) since we're not changing that here
 	c = r_reg(RF24_SETUP_RETR) & 0x0F;
 	us = (us-250) / 250;
-	w_reg(RF24_SETUP_RETR, c | (us << 4));
+	us <<= 4;
+	w_reg(RF24_SETUP_RETR, c | (us & 0xF0));
 }
 
-void msprf24_set_retransmit_count(char count)
+void msprf24_set_retransmit_count(unsigned char count)
 {
-	char c;
+	unsigned char c;
 
 	c = r_reg(RF24_SETUP_RETR) & 0xF0;
 	w_reg(RF24_SETUP_RETR, c | (count & 0x0F));
 }
 
-char msprf24_get_last_retransmits()
+unsigned char msprf24_get_last_retransmits()
 {
 	return r_reg(RF24_OBSERVE_TX) & 0x0F;
 }
 
-char msprf24_get_lostpackets()
+unsigned char msprf24_get_lostpackets()
 {
 	return (r_reg(RF24_OBSERVE_TX) >> 4) & 0x0F;
 }
 
-inline char _msprf24_crc_mask()
+inline unsigned char _msprf24_crc_mask()
 {
 	return (rf_crc & 0x0C);
 }
 
-inline char _msprf24_irq_mask()
+inline unsigned char _msprf24_irq_mask()
 {
 	return ~(RF24_MASK_RX_DR | RF24_MASK_TX_DS | RF24_MASK_MAX_RT);
 }
 
-char msprf24_is_alive()
+unsigned char msprf24_is_alive()
 {
-	char aw;
+	unsigned char aw;
 
 	aw = r_reg(RF24_SETUP_AW);
 	return((aw & 0xFC) == 0x00 && (aw & 0x03) != 0x00);
 }
 
-char msprf24_set_config(char cfgval)
+unsigned char msprf24_set_config(unsigned char cfgval)
 {
-	char previous_config;
+	unsigned char previous_config;
 
 	previous_config = r_reg(RF24_CONFIG);
 	w_reg(RF24_CONFIG, (_msprf24_crc_mask() | cfgval) & _msprf24_irq_mask());
@@ -681,9 +682,9 @@ void msprf24_set_address_width()
 	w_reg(RF24_SETUP_AW, ((rf_addr_width-2) & 0x03));
 }
 
-char msprf24_current_state()
+unsigned char msprf24_current_state()
 {
-	char config;
+	unsigned char config;
 
 	if (!msprf24_is_alive())               // Can't read/detect a valid value from SETUP_AW? (typically SPI or device fault)
 		return RF24_STATE_NOTPRESENT;
@@ -712,7 +713,7 @@ void msprf24_powerdown()
 // Enable Standby-I, 26uA power draw
 void msprf24_standby()
 {
-	char state = msprf24_current_state();
+	unsigned char state = msprf24_current_state();
 	if (state == RF24_STATE_NOTPRESENT || state == RF24_STATE_STANDBY_I)
 		return;
 	CE_DIS;
@@ -754,7 +755,7 @@ void msprf24_activate_tx()
 /* Evaluate state of TX, RX FIFOs
  * Compare this with RF24_QUEUE_* #define's from msprf24.h
  */
-char msprf24_queue_state()
+unsigned char msprf24_queue_state()
 {
 	return r_reg(RF24_FIFO_STATUS);
 }
@@ -766,7 +767,7 @@ unsigned char msprf24_scan()
 {
 	int testcount = 1023;
 	unsigned int rpdcount = 0;
-	char last_state;
+	unsigned char last_state;
 
 	last_state = msprf24_current_state();
 	if (last_state != RF24_STATE_PRX)
@@ -786,7 +787,7 @@ unsigned char msprf24_scan()
 }
 
 // Get IRQ flag status
-char msprf24_get_irq_reason()
+unsigned char msprf24_get_irq_reason()
 {
 	rf_irq &= ~RF24_IRQ_FLAGGED;
 	CSN_EN;
@@ -797,7 +798,7 @@ char msprf24_get_irq_reason()
 }
 
 /* Clear IRQ flags */
-void msprf24_irq_clear(char irqflag)
+void msprf24_irq_clear(unsigned char irqflag)
 {
 	w_reg(RF24_STATUS, irqflag & RF24_IRQ_MASK);
 }
