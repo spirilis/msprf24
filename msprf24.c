@@ -521,7 +521,7 @@ void msprf24_close_pipe(unsigned char pipeid)
 {
 	unsigned char rxen, enaa;
 
-	if (pipeid < 0 || pipeid > 5)
+	if (pipeid > 5)
 		return;
 
 	rxen = r_reg(RF24_EN_RXADDR);
@@ -670,7 +670,7 @@ void msprf24_set_speed_power()
 
 void msprf24_set_channel()
 {
-	if (rf_channel < 0 || rf_channel > 125)
+	if (rf_channel > 125)
 		rf_channel = 0;
 	w_reg(RF24_RF_CH, (rf_channel & 0x7F));
 }
