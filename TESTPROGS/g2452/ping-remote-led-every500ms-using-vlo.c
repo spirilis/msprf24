@@ -69,7 +69,6 @@ void main()
 	buf[1] = '\0';
 	while(1) {
 		if (rf_irq & RF24_IRQ_FLAGGED) {  // Just acknowledging previous packet here
-			rf_irq &= ~RF24_IRQ_FLAGGED;
 			msprf24_get_irq_reason();
 			msprf24_irq_clear(RF24_IRQ_MASK);
 			user = msprf24_get_last_retransmits();

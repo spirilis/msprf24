@@ -44,8 +44,6 @@ void main()
 	LPM4;
 
 	if (rf_irq & RF24_IRQ_FLAGGED) {
-		rf_irq &= ~RF24_IRQ_FLAGGED;
-
 		msprf24_get_irq_reason();
 		if (rf_irq & RF24_IRQ_TX)
 			P1OUT |= 0x40;  // Green LED

@@ -43,7 +43,6 @@ int main()
 
 	while (1) {
 		if (rf_irq & RF24_IRQ_FLAGGED) {
-			rf_irq &= ~RF24_IRQ_FLAGGED;
 			msprf24_get_irq_reason();
 		}
 		if (rf_irq & RF24_IRQ_RX) {
