@@ -5,7 +5,7 @@
 
 volatile unsigned int user;
 
-void main()
+int main()
 {
 	char addr[5];
 	char buf[32];
@@ -61,4 +61,5 @@ void main()
 		}
 		LPM4;
 	}
+	return 0;
 }

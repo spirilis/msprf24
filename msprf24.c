@@ -250,7 +250,7 @@ void w_rx_addr(unsigned char pipe, char *addr)
 {
 	int i;
 
-	if (pipe < 0 || pipe > 5)
+	if (pipe > 5)
 		return;  // Only 6 pipes available
 	CSN_EN;
 	rf_status = spi_transfer((RF24_RX_ADDR_P0 + pipe) | RF24_W_REGISTER);
@@ -384,7 +384,7 @@ void w_ack_payload(unsigned char pipe, unsigned char len, char *data)
 	int i=0;
 	CSN_EN;
 
-	if (pipe < 0 || pipe > 5)
+	if (pipe > 5)
 		return;
 	if ( !(rf_feature & RF24_EN_ACK_PAY) )  // ACK payloads must be enabled...
 		return;
@@ -545,7 +545,7 @@ void msprf24_open_pipe(unsigned char pipeid, unsigned char autoack)
 {
 	unsigned char rxen, enaa;
 
-	if (pipeid < 0 || pipeid > 5)
+	if (pipeid > 5)
 		return;
 
 	rxen = r_reg(RF24_EN_RXADDR);
@@ -564,7 +564,7 @@ unsigned char msprf24_pipe_isopen(unsigned char pipeid)
 {
 	unsigned char rxen;
 
-	if (pipeid < 0 || pipeid > 5)
+	if (pipeid > 5)
 		return 0;
 
 	rxen = r_reg(RF24_EN_RXADDR);
@@ -576,7 +576,7 @@ void msprf24_set_pipe_packetsize(unsigned char pipe, unsigned char size)
 {
 	unsigned char dynpdcfg;
 
-	if (pipe < 0 || pipe > 5)
+	if (pipe > 5)
 		return;
 
 	dynpdcfg = r_reg(RF24_DYNPD);
