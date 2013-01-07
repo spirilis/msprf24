@@ -40,6 +40,12 @@
 #define DELAY_CYCLES_130US     2080
 #define DELAY_CYCLES_15US      240
 
+/* Settings for 24MHz MCLK.
+#define DELAY_CYCLES_5MS       120000
+#define DELAY_CYCLES_130US     3120
+#define DELAY_CYCLES_15US      360
+ */
+
 /* SPI port--Select which USCI port we're using.
  * Applies only to USCI devices.  USI users can keep these
  * commented out.

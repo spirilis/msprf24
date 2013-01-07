@@ -6,6 +6,8 @@
  * 1. USI - developed on MSP430G2231
  * 2. USCI_A - developed on MSP430G2553
  * 3. USCI_B - developed on MSP430G2553
+ * 4. USCI_A F5xxx - developed on MSP430F5172
+ * 5. USCI_B F5xxx - developed on MSP430F5172
  *
  * MSP430-specific code inspired/derived from dkedr's nrf24 library posted on the 43oh forums:
  * http://www.43oh.com/forum/viewtopic.php?f=10&t=2572
@@ -83,6 +85,7 @@ int spi_transfer16(int inw)
 }
 #endif
 
+// USCI for F2xxx and G2xxx devices
 #if defined(__MSP430_HAS_USCI__) && defined(RF24_SPI_DRIVER_USCI_A)
 void spi_init()
 {
@@ -209,6 +212,133 @@ int spi_transfer16(int inw)
 	return retw;
 }
 #endif
+
+// USCI for F5xxx/6xxx devices--F5172 specific P1SEL settings
+#if defined(__MSP430_HAS_USCI_A0__) && defined(RF24_SPI_DRIVER_USCI_A)
+void spi_init()
+{
+	/* Configure ports on MSP430 device for USCI_A */
+	P1SEL |= BIT0 | BIT1 | BIT2;
+
+	/* USCI-A specific SPI setup */
+	UCA0CTL1 |= UCSWRST;
+	UCA0MCTL = 0x00;  // Clearing modulation control per TI user's guide recommendation
+	UCA0CTL0 = UCCKPH | UCMSB | UCMST | UCMODE_0 | UCSYNC;  // SPI mode 0, master
+	UCA0BR0 = 0x01;  // SPI clocked at same speed as SMCLK
+	UCA0BR1 = 0x00;
+	UCA0CTL1 = UCSSEL_2;  // Clock = SMCLK, clear UCSWRST and enables USCI_A module.
+}
+
+char spi_transfer(char inb)
+{
+	#ifdef RF24_SPI_DRIVER_USCI_USE_IRQ
+	UCA0IE |= UCRXIE;
+	UCA0TXBUF = inb;
+	do {
+		LPM0;
+	} while (UCA0STAT & UCBUSY);
+	#else
+	UCA0TXBUF = inb;
+	while ( !(UCA0IFG & UCRXIFG) )  // Wait for RXIFG indicating remote byte received via SOMI
+		;
+	#endif
+	return UCA0RXBUF;
+}
+
+int spi_transfer16(int inw)
+{
+	int retw;
+
+	#ifdef RF24_SPI_DRIVER_USCI_USE_IRQ
+	UCA0IE |= UCRXIE;
+	UCA0TXBUF = (inw >> 8) & 0xFF;  // Send MSB first...
+	do {
+		LPM0;
+	} while (UCA0STAT & UCBUSY);
+	#else
+	UCA0TXBUF = (inw >> 8) & 0xFF;
+	while ( !(UCA0IFG & UCRXIFG) )
+		;
+	#endif
+	retw = UCA0RXBUF << 8;
+	#ifdef RF24_SPI_DRIVER_USCI_USE_IRQ
+	UCA0IE |= UCRXIE;
+	UCA0TXBUF = inw & 0xFF;
+	do {
+		LPM0;
+	} while (UCA0STAT & UCBUSY);
+	#else
+	UCA0TXBUF = inw & 0xFF;
+	while ( !(UCA0IFG & UCRXIFG) )
+		;
+	#endif
+	retw |= UCA0RXBUF;
+	return retw;
+}
+#endif
+
+#if defined(__MSP430_HAS_USCI_B0__) && defined(RF24_SPI_DRIVER_USCI_B)
+void spi_init()
+{
+	/* Configure ports on MSP430 device for USCI_B */
+	P1SEL |= BIT3 | BIT4 | BIT5;
+
+	/* USCI-B specific SPI setup */
+	UCB0CTL1 |= UCSWRST;
+	UCB0CTL0 = UCCKPH | UCMSB | UCMST | UCMODE_0 | UCSYNC;  // SPI mode 0, master
+	UCB0BR0 = 0x01;  // SPI clocked at same speed as SMCLK
+	UCB0BR1 = 0x00;
+	UCB0CTL1 = UCSSEL_2;  // Clock = SMCLK, clear UCSWRST and enables USCI_B module.
+}
+
+char spi_transfer(char inb)
+{
+	#ifdef RF24_SPI_DRIVER_USCI_USE_IRQ
+	UCB0IE |= UCRXIE;
+	UCB0TXBUF = inb;
+	do {
+		LPM0;
+	} while (UCB0STAT & UCBUSY);
+	#else
+	UCB0TXBUF = inb;
+	while ( !(UCB0IFG & UCRXIFG) )  // Wait for RXIFG indicating remote byte received via SOMI
+		;
+	#endif
+	return UCB0RXBUF;
+}
+
+int spi_transfer16(int inw)
+{
+	int retw;
+
+	#ifdef RF24_SPI_DRIVER_USCI_USE_IRQ
+	UCB0IE |= UCRXIE;
+	UCB0TXBUF = (inw >> 8) & 0xFF;  // Send MSB first...
+	do {
+		LPM0;
+	} while (UCB0STAT & UCBUSY);
+	#else
+	UCB0TXBUF = (inw >> 8) & 0xFF;
+	while ( !(UCB0IFG & UCRXIFG) )
+		;
+	#endif
+	retw = UCB0RXBUF << 8;
+	#ifdef RF24_SPI_DRIVER_USCI_USE_IRQ
+	UCB0IE |= UCRXIE;
+	UCB0TXBUF = inw & 0xFF;
+	do {
+		LPM0;
+	} while (UCB0STAT & UCBUSY);
+	#else
+	UCB0TXBUF = inw & 0xFF;
+	while ( !(UCB0IFG & UCRXIFG) )
+		;
+	#endif
+	retw |= UCB0RXBUF;
+	return retw;
+}
+#endif
+
 
 
 
@@ -457,6 +587,8 @@ void msprf24_init()
 		P2DIR |= nrfCSNpin;
 	#elif nrfCSNport == 3
 		P3DIR |= nrfCSNpin;
+	#elif nrfCSNport == J
+		PJDIR |= nrfCSNpin;
 	#endif
 	CSN_DIS;
 
@@ -466,6 +598,8 @@ void msprf24_init()
 		P2DIR |= nrfCEpin;
 	#elif nrfCEport == 3
 		P3DIR |= nrfCEpin;
+	#elif nrfCEport == J
+		PJDIR |= nrfCEpin;
 	#endif
 	CE_DIS;
 
@@ -823,7 +957,7 @@ __interrupt void USI_TXRX (void) {
 }
 #endif
 
-// SPI driver interrupt vector--USCI
+// SPI driver interrupt vector--USCI F2xxx/G2xxx
 #if defined(__MSP430_HAS_USCI__) && defined(RF24_SPI_DRIVER_USCI_PROVIDE_ISR)
 #pragma vector = USCIAB0RX_VECTOR
 __interrupt void USCI_RX(void) {
@@ -837,6 +971,23 @@ __interrupt void USCI_RX(void) {
 	#endif
 
 	__bic_SR_register_on_exit(LPM0_bits);  // Clear LPM0 mode
+}
+#endif
+
+// SPI driver interrupt vector--USCI F5xxx/6xxx
+#if defined(__MSP430_HAS_USCI_A0__) && defined(RF24_SPI_DRIVER_USCI_PROVIDE_ISR) && defined(RF24_SPI_DRIVER_USCI_A)
+#pragma vector = USCI_A0_VECTOR
+__interrupt void USCI_A0(void) {
+	UCA0IE &= ~UCRXIE;
+	__bic_SR_register_on_exit(LPM0_bits);
+}
+#endif
+
+#if defined(__MSP430_HAS_USCI_B0__) && defined(RF24_SPI_DRIVER_USCI_PROVIDE_ISR) && defined(RF24_SPI_DRIVER_USCI_B)
+#pragma vector = USCI_B0_VECTOR
+__interrupt void USCI_B0(void) {
+	UCB0IE &= ~UCRXIE;
+	__bic_SR_register_on_exit(LPM0_bits);
 }
 #endif
 
