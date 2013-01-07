@@ -994,7 +994,6 @@ __interrupt void USCI_B0(void) {
 
 
 
-
 // RF transceiver IRQ handling
 #if   nrfIRQport == 2
 #pragma vector = PORT2_VECTOR
