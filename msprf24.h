@@ -123,6 +123,7 @@ unsigned char msprf24_get_lostpackets();      /* # of packets lost since last ti
 	                                       * Running msprf24_set_channel() without modifying rf_channel will reset this counter.
                                                */
 unsigned char msprf24_is_alive();                    // Hello World, test if chip is present and/or SPI is working.
+unsigned char msprf24_set_config(unsigned char cfgval);
 void msprf24_set_speed_power();                      // Commit RF speed & TX power from rf_speed_power variable.
 void msprf24_set_channel();                          // Commit RF channel setting from rf_channel variable.
 void msprf24_set_address_width();                    // Commit Enhanced ShockBurst Address Width from rf_addr_width variable.
