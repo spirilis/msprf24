@@ -85,6 +85,7 @@ extern volatile unsigned char rf_irq;
 void spi_init();
 char spi_transfer(char);  // SPI xfer 1 byte
 int spi_transfer16(int);  // SPI xfer 2 bytes
+int spi_transfer9(int);   // SPI xfer 9 bits (courtesy for driving LCD screens)
 
 // Register & FIFO I/O
 unsigned char r_reg(unsigned char addr);

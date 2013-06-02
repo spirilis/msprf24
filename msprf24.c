@@ -83,6 +83,19 @@ int spi_transfer16(int inw)
 	USICTL1 &= ~USIIE;
 	return USISR;
 }
+
+/* Not used by msprf24, but added for courtesy (LCD display support).  9-bit SPI. */
+int spi_transfer9(int inw)
+{
+	USICTL1 |= USIIE;
+	USISR = inw;
+	USICNT = 9 | USI16B;  // Start 9-bit SPI transfer
+	do {
+		LPM0;                  // Light sleep while transferring
+	} while (USICNT & 0x1F);
+	USICTL1 &= ~USIIE;
+	return USISR;
+}
 #endif
 
 // USCI for F2xxx and G2xxx devices
@@ -148,6 +161,38 @@ int spi_transfer16(int inw)
 	retw |= UCA0RXBUF;
 	return retw;
 }
+
+int spi_transfer9(int inw)
+{
+	unsigned char p1dir_save, p1out_save, p1ren_save;
+	int retw=0;
+
+	/* Reconfigure I/O ports for bitbanging the MSB */
+	p1ren_save = P1REN; p1out_save = P1OUT; p1dir_save = P1DIR;
+	P1REN &= ~(BIT1 | BIT2 | BIT4);
+	P1OUT &= ~(BIT1 | BIT2 | BIT4);
+	P1DIR = (P1DIR & ~(BIT1 | BIT2 | BIT4)) | BIT2 | BIT4;
+	P1SEL &= ~(BIT1 | BIT2 | BIT4);
+	P1SEL2 &= ~(BIT1 | BIT2 | BIT4);
+
+	// Perform single-bit transfer
+	if (inw & 0x0100)
+		P1OUT |= BIT2;
+	P1OUT |= BIT4;
+	if (P1IN & BIT1)
+		retw |= 0x0100;
+	P1OUT &= ~BIT4;
+
+	// Restore port states and continue with 8-bit SPI
+	P1SEL |= BIT1 | BIT2 | BIT4;
+	P1SEL2 |= BIT1 | BIT2 | BIT4;
+	P1DIR = p1dir_save;
+	P1OUT = p1out_save;
+	P1REN = p1ren_save;
+
+	retw |= spi_transfer( (char)(inw & 0x00FF) );
+	return retw;
+}
 #endif
 
 #if defined(__MSP430_HAS_USCI__) && defined(RF24_SPI_DRIVER_USCI_B)
@@ -209,6 +254,38 @@ int spi_transfer16(int inw)
 		;
 	#endif
 	retw |= UCB0RXBUF;
+	return retw;
+}
+
+int spi_transfer9(int inw)
+{
+	unsigned char p1dir_save, p1out_save, p1ren_save;
+	int retw=0;
+
+	/* Reconfigure I/O ports for bitbanging the MSB */
+	p1ren_save = P1REN; p1out_save = P1OUT; p1dir_save = P1DIR;
+	P1REN &= ~(BIT5 | BIT6 | BIT7);
+	P1OUT &= ~(BIT5 | BIT6 | BIT7);
+	P1DIR = (P1DIR & ~(BIT5 | BIT6 | BIT7)) | BIT5 | BIT7;
+	P1SEL &= ~(BIT5 | BIT6 | BIT7);
+	P1SEL2 &= ~(BIT5 | BIT6 | BIT7);
+
+	// Perform single-bit transfer
+	if (inw & 0x0100)
+		P1OUT |= BIT7;
+	P1OUT |= BIT5;
+	if (P1IN & BIT4)
+		retw |= 0x0100;
+	P1OUT &= ~BIT5;
+
+	// Restore port states and continue with 8-bit SPI
+	P1SEL |= BIT5 | BIT6 | BIT7;
+	P1SEL2 |= BIT5 | BIT6 | BIT7;
+	P1DIR = p1dir_save;
+	P1OUT = p1out_save;
+	P1REN = p1ren_save;
+
+	retw |= spi_transfer( (char)(inw & 0x00FF) );
 	return retw;
 }
 #endif
@@ -275,6 +352,36 @@ int spi_transfer16(int inw)
 	retw |= UCA0RXBUF;
 	return retw;
 }
+
+int spi_transfer9(int inw)
+{
+	unsigned char p1dir_save, p1out_save, p1ren_save;
+	int retw=0;
+
+	/* Reconfigure I/O ports for bitbanging the MSB */
+	p1ren_save = P1REN; p1out_save = P1OUT; p1dir_save = P1DIR;
+	P1REN &= ~(BIT0 | BIT1 | BIT2);
+	P1OUT &= ~(BIT0 | BIT1 | BIT2);
+	P1DIR = (P1DIR & ~(BIT0 | BIT1 | BIT2)) | BIT0 | BIT1;
+	P1SEL &= ~(BIT0 | BIT1 | BIT2);
+
+	// Perform single-bit transfer
+	if (inw & 0x0100)
+		P1OUT |= BIT1;
+	P1OUT |= BIT0;
+	if (P1IN & BIT2)
+		retw |= 0x0100;
+	P1OUT &= ~BIT0;
+
+	// Restore port states and continue with 8-bit SPI
+	P1SEL |= BIT0 | BIT1 | BIT2;
+	P1DIR = p1dir_save;
+	P1OUT = p1out_save;
+	P1REN = p1ren_save;
+
+	retw |= spi_transfer( (char)(inw & 0x00FF) );
+	return retw;
+}
 #endif
 
 #if defined(__MSP430_HAS_USCI_B0__) && defined(RF24_SPI_DRIVER_USCI_B)
@@ -335,6 +442,36 @@ int spi_transfer16(int inw)
 		;
 	#endif
 	retw |= UCB0RXBUF;
+	return retw;
+}
+
+int spi_transfer9(int inw)
+{
+	unsigned char p1dir_save, p1out_save, p1ren_save;
+	int retw=0;
+
+	/* Reconfigure I/O ports for bitbanging the MSB */
+	p1ren_save = P1REN; p1out_save = P1OUT; p1dir_save = P1DIR;
+	P1REN &= ~(BIT3 | BIT4 | BIT5);
+	P1OUT &= ~(BIT3 | BIT4 | BIT5);
+	P1DIR = (P1DIR & ~(BIT3 | BIT4 | BIT5)) | BIT3 | BIT4;
+	P1SEL &= ~(BIT3 | BIT4 | BIT5);
+
+	// Perform single-bit transfer
+	if (inw & 0x0100)
+		P1OUT |= BIT4;
+	P1OUT |= BIT3;
+	if (P1IN & BIT5)
+		retw |= 0x0100;
+	P1OUT &= ~BIT3;
+
+	// Restore port states and continue with 8-bit SPI
+	P1SEL |= BIT3 | BIT4 | BIT5;
+	P1DIR = p1dir_save;
+	P1OUT = p1out_save;
+	P1REN = p1ren_save;
+
+	retw |= spi_transfer( (char)(inw & 0x00FF) );
 	return retw;
 }
 #endif
