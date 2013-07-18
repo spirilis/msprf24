@@ -45,7 +45,7 @@ int main()
 		if (rf_irq & RF24_IRQ_FLAGGED) {
 			msprf24_get_irq_reason();
 		}
-		if (rf_irq & RF24_IRQ_RX) {
+		if (rf_irq & RF24_IRQ_RX || msprf24_rx_pending()) {
 			r_rx_payload(r_rx_peek_payload_size(), buf);
 			msprf24_irq_clear(RF24_IRQ_RX);
 			user = buf[0];

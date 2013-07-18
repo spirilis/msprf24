@@ -1057,6 +1057,18 @@ unsigned char msprf24_scan()
 	return( (unsigned char) (rpdcount/4) );
 }
 
+// Check if there is pending RX fifo data
+unsigned char msprf24_rx_pending()
+{
+	CSN_EN;
+	rf_status = spi_transfer(RF24_NOP);
+	CSN_DIS;
+
+	if ((rf_status & 0x0E) < 0x0E)
+		return 1;
+	return 0;
+}
+
 // Get IRQ flag status
 unsigned char msprf24_get_irq_reason()
 {

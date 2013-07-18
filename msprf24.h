@@ -141,6 +141,7 @@ unsigned char msprf24_queue_state();      // Read FIFO_STATUS register; user sho
 unsigned char msprf24_scan();             // Scan current channel for RPD (looks for any signals > -64dBm)
 
 // IRQ handling
+unsigned char msprf24_rx_pending();		   /* Query STATUS register to determine if RX FIFO data is available for reading. */
 unsigned char msprf24_get_irq_reason();            /* Query STATUS register for the IRQ flags, test with RF24_IRQ_* #define's
 						    * Result is stored in rf_irq (note- RF24_IRQ_FLAGGED is not automatically cleared by this
 						    * function, that's the user's responsibility.)
