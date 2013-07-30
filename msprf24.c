@@ -98,8 +98,8 @@ int spi_transfer9(int inw)
 }
 #endif
 
-// USCI for F2xxx and G2xxx devices
-#if defined(__MSP430_HAS_USCI__) && defined(RF24_SPI_DRIVER_USCI_A)
+// USCI for F2xxx and G2xx3 devices
+#if defined(__MSP430_HAS_USCI__) && defined(RF24_SPI_DRIVER_USCI_A) && !defined(__MSP430_HAS_TB3__)
 void spi_init()
 {
 	/* Configure ports on MSP430 device for USCI_A */
@@ -195,7 +195,7 @@ int spi_transfer9(int inw)
 }
 #endif
 
-#if defined(__MSP430_HAS_USCI__) && defined(RF24_SPI_DRIVER_USCI_B)
+#if defined(__MSP430_HAS_USCI__) && defined(RF24_SPI_DRIVER_USCI_B) && !defined(__MSP430_HAS_TB3__)
 void spi_init()
 {
 	/* Configure ports on MSP430 device for USCI_B */
@@ -284,6 +284,196 @@ int spi_transfer9(int inw)
 	P1DIR = p1dir_save;
 	P1OUT = p1out_save;
 	P1REN = p1ren_save;
+
+	retw |= spi_transfer( (char)(inw & 0x00FF) );
+	return retw;
+}
+#endif
+
+// USCI for G2xx4/G2xx5 devices
+#if defined(__MSP430_HAS_USCI__) && defined(RF24_SPI_DRIVER_USCI_A) && defined(__MSP430_HAS_TB3__)
+void spi_init()
+{
+	/* Configure ports on MSP430 device for USCI_A */
+	P3SEL |= BIT0 | BIT4 | BIT5;
+	P3SEL2 &= ~(BIT0 | BIT4 | BIT5);
+
+	/* USCI-A specific SPI setup */
+	UCA0CTL1 |= UCSWRST;
+	UCA0MCTL = 0x00;  // Clearing modulation control per TI user's guide recommendation
+	UCA0CTL0 = UCCKPH | UCMSB | UCMST | UCMODE_0 | UCSYNC;  // SPI mode 0, master
+	UCA0BR0 = 0x01;  // SPI clocked at same speed as SMCLK
+	UCA0BR1 = 0x00;
+	UCA0CTL1 = UCSSEL_2;  // Clock = SMCLK, clear UCSWRST and enables USCI_A module.
+}
+
+char spi_transfer(char inb)
+{
+	#ifdef RF24_SPI_DRIVER_USCI_USE_IRQ
+	IE2 |= UCA0RXIE;
+	UCA0TXBUF = inb;
+	do {
+		LPM0;
+	} while (UCA0STAT & UCBUSY);
+	#else
+	UCA0TXBUF = inb;
+	while ( !(IFG2 & UCA0RXIFG) )  // Wait for RXIFG indicating remote byte received via SOMI
+		;
+	#endif
+	return UCA0RXBUF;
+}
+
+int spi_transfer16(int inw)
+{
+	int retw;
+
+	#ifdef RF24_SPI_DRIVER_USCI_USE_IRQ
+	IE2 |= UCA0RXIE;
+	UCA0TXBUF = (inw >> 8) & 0xFF;  // Send MSB first...
+	do {
+		LPM0;
+	} while (UCA0STAT & UCBUSY);
+	#else
+	UCA0TXBUF = (inw >> 8) & 0xFF;
+	while ( !(IFG2 & UCA0RXIFG) )
+		;
+	#endif
+	retw = UCA0RXBUF << 8;
+	#ifdef RF24_SPI_DRIVER_USCI_USE_IRQ
+	IE2 |= UCA0RXIE;
+	UCA0TXBUF = inw & 0xFF;
+	do {
+		LPM0;
+	} while (UCA0STAT & UCBUSY);
+	#else
+	UCA0TXBUF = inw & 0xFF;
+	while ( !(IFG2 & UCA0RXIFG) )
+		;
+	#endif
+	retw |= UCA0RXBUF;
+	return retw;
+}
+
+int spi_transfer9(int inw)
+{
+	unsigned char p3dir_save, p3out_save, p3ren_save;
+	int retw=0;
+
+	/* Reconfigure I/O ports for bitbanging the MSB */
+	p3ren_save = P3REN; p3out_save = P3OUT; p3dir_save = P3DIR;
+	P3REN &= ~(BIT0 | BIT4 | BIT5);
+	P3OUT &= ~(BIT0 | BIT4 | BIT5);
+	P3DIR = (P3DIR & ~(BIT0 | BIT4 | BIT5)) | BIT0 | BIT4;
+	P3SEL &= ~(BIT0 | BIT4 | BIT5);
+	P3SEL2 &= ~(BIT0 | BIT4 | BIT5);
+
+	// Perform single-bit transfer
+	if (inw & 0x0100)
+		P3OUT |= BIT4;
+	P3OUT |= BIT0;
+	if (P3IN & BIT5)
+		retw |= 0x0100;
+	P3OUT &= ~BIT0;
+
+	// Restore port states and continue with 8-bit SPI
+	P3SEL |= BIT0 | BIT4 | BIT5;
+	P3DIR = p3dir_save;
+	P3OUT = p3out_save;
+	P3REN = p3ren_save;
+
+	retw |= spi_transfer( (char)(inw & 0x00FF) );
+	return retw;
+}
+#endif
+
+#if defined(__MSP430_HAS_USCI__) && defined(RF24_SPI_DRIVER_USCI_B) && defined(__MSP430_HAS_TB3__)
+void spi_init()
+{
+	/* Configure ports on MSP430 device for USCI_B */
+	P3SEL |= BIT1 | BIT2 | BIT3;
+	P3SEL2 &= ~(BIT1 | BIT2 | BIT3);
+
+	/* USCI-B specific SPI setup */
+	UCB0CTL1 |= UCSWRST;
+	UCB0CTL0 = UCCKPH | UCMSB | UCMST | UCMODE_0 | UCSYNC;  // SPI mode 0, master
+	UCB0BR0 = 0x01;  // SPI clocked at same speed as SMCLK
+	UCB0BR1 = 0x00;
+	UCB0CTL1 = UCSSEL_2;  // Clock = SMCLK, clear UCSWRST and enables USCI_B module.
+}
+
+char spi_transfer(char inb)
+{
+	#ifdef RF24_SPI_DRIVER_USCI_USE_IRQ
+	IE2 |= UCB0RXIE;
+	UCB0TXBUF = inb;
+	do {
+		LPM0;
+	} while (UCB0STAT & UCBUSY);
+	#else
+	UCB0TXBUF = inb;
+	while ( !(IFG2 & UCB0RXIFG) )  // Wait for RXIFG indicating remote byte received via SOMI
+		;
+	#endif
+	return UCB0RXBUF;
+}
+
+int spi_transfer16(int inw)
+{
+	int retw;
+
+	#ifdef RF24_SPI_DRIVER_USCI_USE_IRQ
+	IE2 |= UCB0RXIE;
+	UCB0TXBUF = (inw >> 8) & 0xFF;  // Send MSB first...
+	do {
+		LPM0;
+	} while (UCB0STAT & UCBUSY);
+	#else
+	UCB0TXBUF = (inw >> 8) & 0xFF;
+	while ( !(IFG2 & UCB0RXIFG) )
+		;
+	#endif
+	retw = UCB0RXBUF << 8;
+	#ifdef RF24_SPI_DRIVER_USCI_USE_IRQ
+	IE2 |= UCB0RXIE;
+	UCB0TXBUF = inw & 0xFF;
+	do {
+		LPM0;
+	} while (UCB0STAT & UCBUSY);
+	#else
+	UCB0TXBUF = inw & 0xFF;
+	while ( !(IFG2 & UCB0RXIFG) )
+		;
+	#endif
+	retw |= UCB0RXBUF;
+	return retw;
+}
+
+int spi_transfer9(int inw)
+{
+	unsigned char p3dir_save, p3out_save, p3ren_save;
+	int retw=0;
+
+	/* Reconfigure I/O ports for bitbanging the MSB */
+	p3ren_save = P3REN; p3out_save = P3OUT; p3dir_save = P3DIR;
+	P3REN &= ~(BIT1 | BIT2 | BIT3);
+	P3OUT &= ~(BIT1 | BIT2 | BIT3);
+	P3DIR = (P3DIR & ~(BIT1 | BIT2 | BIT3)) | BIT1 | BIT3;
+	P3SEL &= ~(BIT1 | BIT2 | BIT3);
+	P3SEL2 &= ~(BIT1 | BIT2 | BIT3);
+
+	// Perform single-bit transfer
+	if (inw & 0x0100)
+		P3OUT |= BIT1;
+	P3OUT |= BIT3;
+	if (P3IN & BIT2)
+		retw |= 0x0100;
+	P3OUT &= ~BIT3;
+
+	// Restore port states and continue with 8-bit SPI
+	P3SEL |= BIT1 | BIT2 | BIT3;
+	P3DIR = p3dir_save;
+	P3OUT = p3out_save;
+	P3REN = p3ren_save;
 
 	retw |= spi_transfer( (char)(inw & 0x00FF) );
 	return retw;
