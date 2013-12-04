@@ -1179,8 +1179,11 @@ void msprf24_standby()
 		return;
 	CE_DIS;
 	msprf24_set_config(RF24_PWR_UP);  // PWR_UP=1, PRIM_RX=0
-	if (state == RF24_STATE_POWERDOWN)  // If we're powering up from deep powerdown...
+	if (state == RF24_STATE_POWERDOWN) {  // If we're powering up from deep powerdown...
+		CE_EN;
 		__delay_cycles(DELAY_CYCLES_5MS);  // Then wait 5ms for the crystal oscillator to spin up.
+		CE_DIS;
+	}
 }
 
 // Enable PRX mode
