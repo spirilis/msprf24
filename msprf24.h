@@ -46,13 +46,15 @@ extern volatile unsigned char rf_irq;
 #define RF24_SPEED_MASK     0x28
 
 /* RF transmit power settings */
+#define RF24_POWER_7DBM        0x07
+    // ^ 7dBm available with SI24R1 Taiwanese knockoff modules
 #define RF24_POWER_0DBM        0x06
 #define RF24_POWER_MINUS6DBM   0x04
 #define RF24_POWER_MINUS12DBM  0x02
 #define RF24_POWER_MINUS18DBM  0x00
 #define RF24_POWER_MAX         RF24_POWER_0DBM
 #define RF24_POWER_MIN         RF24_POWER_MINUS18DBM
-#define RF24_POWER_MASK        0x06
+#define RF24_POWER_MASK        0x07
 
 /* Available states for the transceiver's state machine */
 #define RF24_STATE_NOTPRESENT  0x00
