@@ -1265,7 +1265,7 @@ unsigned char msprf24_rx_pending()
 // Get IRQ flag status
 unsigned char msprf24_get_irq_reason()
 {
-	rf_irq &= ~RF24_IRQ_FLAGGED;
+	//rf_irq &= ~RF24_IRQ_FLAGGED;  -- Removing in lieu of having this check determined at irq_clear() time
 	CSN_EN;
 	rf_status = spi_transfer(RF24_NOP);
 	CSN_DIS;
@@ -1276,7 +1276,20 @@ unsigned char msprf24_get_irq_reason()
 /* Clear IRQ flags */
 void msprf24_irq_clear(unsigned char irqflag)
 {
-	w_reg(RF24_STATUS, irqflag & RF24_IRQ_MASK);
+	rf_irq &= ~RF24_IRQ_FLAGGED;  /* We clear this, then decide later if it should be re-set.
+				       * Helps avoid race conditions where an IRQ fires between STATUS read
+				       * and handling of the RF24_IRQ_FLAGGED bit.
+				       */
+        CSN_EN;
+	rf_status = spi_transfer(RF24_STATUS | RF24_W_REGISTER);
+	if (irqflag & RF24_IRQ_RX && ((rf_status & 0x0E) < 0x0E))
+		irqflag &= ~RF24_IRQ_RX;  // If there is still RX data pending, prevent user from clearing RX IRQ.
+	spi_transfer(irqflag);
+        CSN_DIS;
+
+	rf_irq = (rf_irq & ~RF24_IRQ_MASK) | (rf_status & RF24_IRQ_MASK & ~irqflag);
+	if (rf_irq & RF24_IRQ_MASK)
+		rf_irq |= RF24_IRQ_FLAGGED;
 }
 
 
