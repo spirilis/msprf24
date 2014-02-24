@@ -7,8 +7,8 @@ volatile unsigned int user;
 
 int main()
 {
-	char addr[5];
-	char buf[32];
+	uint8_t addr[5];
+	uint8_t buf[32];
 
 	WDTCTL = WDTHOLD | WDTPW;
 	DCOCTL = CALDCO_16MHZ;

@@ -5,12 +5,12 @@
 void test_msprf24_init();
 
 volatile unsigned int user;
-volatile char dat;
+volatile uint8_t dat;
 
 int main()
 {
-	char addr[4];
-	char buf[32];
+	uint8_t addr[4];
+	uint8_t buf[32];
 
 	WDTCTL = WDTHOLD | WDTPW;
 	DCOCTL = CALDCO_16MHZ;

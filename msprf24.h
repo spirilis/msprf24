@@ -20,22 +20,23 @@
 #ifndef _MSPRF24_H_
 #define _MSPRF24_H_
 
+#include <stdint.h>
 #include "nRF24L01.h"
 
 /* Configuration variables used to tune RF settings during initialization and for
  * runtime reconfiguration.  You should define all 4 of these before running msprf24_init();
  */
-extern unsigned char rf_crc;
-extern unsigned char rf_addr_width;
-extern unsigned char rf_speed_power;
-extern unsigned char rf_channel;
+extern uint8_t rf_crc;
+extern uint8_t rf_addr_width;
+extern uint8_t rf_speed_power;
+extern uint8_t rf_channel;
 
 /* Status variable updated every time SPI I/O is performed */
-extern unsigned char rf_status;
+extern uint8_t rf_status;
 /* Test this against RF24_IRQ_FLAGGED to see if the nRF24's IRQ was raised; it also
  * holds the last recorded IRQ status from msprf24_irq_get_reason();
  */
-extern volatile unsigned char rf_irq;
+extern volatile uint8_t rf_irq;
 
 /* RF speed settings -- nRF24L01+ compliant, older nRF24L01 does not have 2Mbps. */
 #define RF24_SPEED_250KBPS  0x20
@@ -85,28 +86,28 @@ extern volatile unsigned char rf_irq;
 
 // SPI driver needs to provide these
 void spi_init();
-char spi_transfer(char);  // SPI xfer 1 byte
-int spi_transfer16(int);  // SPI xfer 2 bytes
-int spi_transfer9(int);   // SPI xfer 9 bits (courtesy for driving LCD screens)
+uint8_t spi_transfer(uint8_t);  // SPI xfer 1 byte
+uint16_t spi_transfer16(uint16_t);  // SPI xfer 2 bytes
+uint16_t spi_transfer9(uint16_t);   // SPI xfer 9 bits (courtesy for driving LCD screens)
 
 // Register & FIFO I/O
-unsigned char r_reg(unsigned char addr);
-void w_reg(unsigned char addr, char data);
-void w_tx_addr(char *addr);             // Configure TX address to send next packet
-void w_rx_addr(unsigned char pipe, char *addr);  // Configure RX address of "rf_addr_width" size into the specified pipe
-void w_tx_payload(unsigned char len, char *data);
-void w_tx_payload_noack(unsigned char len, char *data);  /* Only used in auto-ack mode with RF24_EN_DYN_ACK enabled;
+uint8_t r_reg(uint8_t addr);
+void w_reg(uint8_t addr, uint8_t data);
+void w_tx_addr(uint8_t *addr);             // Configure TX address to send next packet
+void w_rx_addr(uint8_t pipe, uint8_t *addr);  // Configure RX address of "rf_addr_width" size into the specified pipe
+void w_tx_payload(uint8_t len, uint8_t *data);
+void w_tx_payload_noack(uint8_t len, uint8_t *data);  /* Only used in auto-ack mode with RF24_EN_DYN_ACK enabled;
 						 * send this packet with no auto-ack.
 						 */
-unsigned char r_rx_peek_payload_size();  // Peek size of incoming RX payload
-unsigned char r_rx_payload(unsigned char len, char *data);
+uint8_t r_rx_peek_payload_size();  // Peek size of incoming RX payload
+uint8_t r_rx_payload(uint8_t len, uint8_t *data);
 void flush_tx();
 void flush_rx();
 void tx_reuse_lastpayload();   /* Enable retransmitting contents of TX FIFO endlessly until flush_tx() or the FIFO contents are replaced.
 				* Actual retransmits don't occur until CE pin is strobed using pulse_ce();
 				*/
 void pulse_ce();  // Pulse CE pin to activate retransmission of TX FIFO contents after tx_reuse_lastpayload();
-void w_ack_payload(unsigned char pipe, unsigned char len, char *data);  // Used when RF24_EN_ACK_PAY is enabled to manually ACK a received packet
+void w_ack_payload(uint8_t pipe, uint8_t len, uint8_t *data);  // Used when RF24_EN_ACK_PAY is enabled to manually ACK a received packet
 
 
 
@@ -114,41 +115,41 @@ void w_ack_payload(unsigned char pipe, unsigned char len, char *data);  // Used 
 void msprf24_init();  /* Set the various configuration variables before running this.
 		       * It will populate the channel/speed/power/default features/etc. values
 		       */
-void msprf24_close_pipe(unsigned char pipeid);       // Disable specified RX pipe
+void msprf24_close_pipe(uint8_t pipeid);       // Disable specified RX pipe
 void msprf24_close_pipe_all();                       // Disable all RX pipes (used during initialization)
-void msprf24_open_pipe(unsigned char pipeid, unsigned char autoack); // Enable specified RX pipe, optionally turn auto-ack (Enhanced ShockBurst) on
-unsigned char msprf24_pipe_isopen(unsigned char pipeid); // Check if specified RX pipe is active
-void msprf24_set_pipe_packetsize(unsigned char pipe, unsigned char size);  // Set static length of pipe's RX payloads (1-32), size=0 enables DynPD.
-void msprf24_set_retransmit_delay(int us);           // 500-4000uS range, clamped by RF speed
-void msprf24_set_retransmit_count(unsigned char count);       // 0-15 retransmits before MAX_RT (RF24_IRQ_TXFAILED) IRQ raised
-unsigned char msprf24_get_last_retransmits();        // # times a packet was retransmitted during last TX attempt
-unsigned char msprf24_get_lostpackets();      /* # of packets lost since last time the Channel was set.
+void msprf24_open_pipe(uint8_t pipeid, uint8_t autoack); // Enable specified RX pipe, optionally turn auto-ack (Enhanced ShockBurst) on
+uint8_t msprf24_pipe_isopen(uint8_t pipeid); // Check if specified RX pipe is active
+void msprf24_set_pipe_packetsize(uint8_t pipe, uint8_t size);  // Set static length of pipe's RX payloads (1-32), size=0 enables DynPD.
+void msprf24_set_retransmit_delay(uint16_t us);           // 500-4000uS range, clamped by RF speed
+void msprf24_set_retransmit_count(uint8_t count);       // 0-15 retransmits before MAX_RT (RF24_IRQ_TXFAILED) IRQ raised
+uint8_t msprf24_get_last_retransmits();        // # times a packet was retransmitted during last TX attempt
+uint8_t msprf24_get_lostpackets();      /* # of packets lost since last time the Channel was set.
 	                                       * Running msprf24_set_channel() without modifying rf_channel will reset this counter.
                                                */
-unsigned char msprf24_is_alive();                    // Hello World, test if chip is present and/or SPI is working.
-unsigned char msprf24_set_config(unsigned char cfgval);
+uint8_t msprf24_is_alive();                    // Hello World, test if chip is present and/or SPI is working.
+uint8_t msprf24_set_config(uint8_t cfgval);
 void msprf24_set_speed_power();                      // Commit RF speed & TX power from rf_speed_power variable.
 void msprf24_set_channel();                          // Commit RF channel setting from rf_channel variable.
 void msprf24_set_address_width();                    // Commit Enhanced ShockBurst Address Width from rf_addr_width variable.
-void msprf24_enable_feature(unsigned char feature);    /* Enable specified feature (RF24_EN_* from nRF24L01.h, except RF24_EN_CRC) */
-void msprf24_disable_feature(unsigned char feature);   /* Disable specified feature                                                */
+void msprf24_enable_feature(uint8_t feature);    /* Enable specified feature (RF24_EN_* from nRF24L01.h, except RF24_EN_CRC) */
+void msprf24_disable_feature(uint8_t feature);   /* Disable specified feature                                                */
 
 // Change chip state and activate I/O
-unsigned char msprf24_current_state();    // Get current state of the nRF24L01+ chip, test with RF24_STATE_* #define's
+uint8_t msprf24_current_state();    // Get current state of the nRF24L01+ chip, test with RF24_STATE_* #define's
 void msprf24_powerdown();                 // Enter Power-Down mode (0.9uA power draw)
 void msprf24_standby();                   // Enter Standby-I mode (26uA power draw)
 void msprf24_activate_rx();               // Enable PRX mode (~12-14mA power draw)
 void msprf24_activate_tx();               // Enable Standby-II or PTX mode; TX FIFO contents will be sent over the air (~320uA STBY2, 7-11mA PTX)
-unsigned char msprf24_queue_state();      // Read FIFO_STATUS register; user should compare return value with RF24_QUEUE_* #define's
-unsigned char msprf24_scan();             // Scan current channel for RPD (looks for any signals > -64dBm)
+uint8_t msprf24_queue_state();      // Read FIFO_STATUS register; user should compare return value with RF24_QUEUE_* #define's
+uint8_t msprf24_scan();             // Scan current channel for RPD (looks for any signals > -64dBm)
 
 // IRQ handling
-unsigned char msprf24_rx_pending();		   /* Query STATUS register to determine if RX FIFO data is available for reading. */
-unsigned char msprf24_get_irq_reason();            /* Query STATUS register for the IRQ flags, test with RF24_IRQ_* #define's
+uint8_t msprf24_rx_pending();		   /* Query STATUS register to determine if RX FIFO data is available for reading. */
+uint8_t msprf24_get_irq_reason();            /* Query STATUS register for the IRQ flags, test with RF24_IRQ_* #define's
 						    * Result is stored in rf_irq (note- RF24_IRQ_FLAGGED is not automatically cleared by this
 						    * function, that's the user's responsibility.)
 						    */
-void msprf24_irq_clear(unsigned char irqflag);     /* Clear specified Interrupt Flags (RF24_IRQ_* #define's) from the transceiver.
+void msprf24_irq_clear(uint8_t irqflag);     /* Clear specified Interrupt Flags (RF24_IRQ_* #define's) from the transceiver.
 		 				    * Required to allow further transmissions to continue.
 						    */
 

@@ -29,6 +29,7 @@
 
 #include <msp430.h>
 #include "msprf24.h"
+#include "msp430_spi.h"
 #include "nRF24L01.h"
 #include "nrf_userconfig.h"
 /* ^ Provides nrfCSNport, nrfCSNportout, nrfCSNpin,
@@ -37,7 +38,7 @@
      Also specify # clock cycles for 5ms, 10us and 130us sleeps.
  */
 /* Private library variables */
-char rf_feature;  // Used to track which features have been enabled
+uint8_t rf_feature;  // Used to track which features have been enabled
 
 /* CE (Chip Enable/RF transceiver activate signal) and CSN (SPI chip-select) operations. */
 #define CSN_EN nrfCSNportout &= ~nrfCSNpin
@@ -47,653 +48,35 @@ char rf_feature;  // Used to track which features have been enabled
 
 
 
-/* SPI drivers */
-#ifdef __MSP430_HAS_USI__
-void spi_init()
-{
-	/* USI SPI setup */
-	USICTL0 |= USISWRST;
-	USICTL1 = USICKPH;                // USICKPH=1 means sampling is done on the leading edge of the clock
-	USICKCTL = USISSEL_2 | USIDIV_0;  // Clock source = SMCLK/1
-	USICTL0 = USIPE7 | USIPE6 | USIPE5 | USIMST | USIOE;
-	USISR = 0x0000;
-}
-
-char spi_transfer(char inb)
-{
-	USICTL1 |= USIIE;
-	USISRL = inb;
-	USICNT = 8;            // Start SPI transfer
-	do {
-		LPM0;                  // Light sleep while transferring
-	} while (USICNT & 0x1F);
-	USICTL1 &= ~USIIE;
-	return USISRL;
-}
-
-/* What wonderful toys TI gives us!  A 16-bit SPI function. */
-int spi_transfer16(int inw)
-{
-	USICTL1 |= USIIE;
-	USISR = inw;
-	USICNT = 16 | USI16B;  // Start 16-bit SPI transfer
-	do {
-		LPM0;                  // Light sleep while transferring
-	} while (USICNT & 0x1F);
-	USICTL1 &= ~USIIE;
-	return USISR;
-}
-
-/* Not used by msprf24, but added for courtesy (LCD display support).  9-bit SPI. */
-int spi_transfer9(int inw)
-{
-	USICTL1 |= USIIE;
-	USISR = inw;
-	USICNT = 9 | USI16B;  // Start 9-bit SPI transfer
-	do {
-		LPM0;                  // Light sleep while transferring
-	} while (USICNT & 0x1F);
-	USICTL1 &= ~USIIE;
-	return USISR;
-}
-#endif
-
-// USCI for F2xxx and G2xx3 devices
-#if defined(__MSP430_HAS_USCI__) && defined(RF24_SPI_DRIVER_USCI_A) && !defined(__MSP430_HAS_TB3__)
-void spi_init()
-{
-	/* Configure ports on MSP430 device for USCI_A */
-	P1SEL |= BIT1 | BIT2 | BIT4;
-	P1SEL2 |= BIT1 | BIT2 | BIT4;
-
-	/* USCI-A specific SPI setup */
-	UCA0CTL1 |= UCSWRST;
-	UCA0MCTL = 0x00;  // Clearing modulation control per TI user's guide recommendation
-	UCA0CTL0 = UCCKPH | UCMSB | UCMST | UCMODE_0 | UCSYNC;  // SPI mode 0, master
-	UCA0BR0 = 0x01;  // SPI clocked at same speed as SMCLK
-	UCA0BR1 = 0x00;
-	UCA0CTL1 = UCSSEL_2;  // Clock = SMCLK, clear UCSWRST and enables USCI_A module.
-}
-
-char spi_transfer(char inb)
-{
-	#ifdef RF24_SPI_DRIVER_USCI_USE_IRQ
-	IE2 |= UCA0RXIE;
-	UCA0TXBUF = inb;
-	do {
-		LPM0;
-	} while (UCA0STAT & UCBUSY);
-	#else
-	UCA0TXBUF = inb;
-	while ( !(IFG2 & UCA0RXIFG) )  // Wait for RXIFG indicating remote byte received via SOMI
-		;
-	#endif
-	return UCA0RXBUF;
-}
-
-int spi_transfer16(int inw)
-{
-	int retw;
-
-	#ifdef RF24_SPI_DRIVER_USCI_USE_IRQ
-	IE2 |= UCA0RXIE;
-	UCA0TXBUF = (inw >> 8) & 0xFF;  // Send MSB first...
-	do {
-		LPM0;
-	} while (UCA0STAT & UCBUSY);
-	#else
-	UCA0TXBUF = (inw >> 8) & 0xFF;
-	while ( !(IFG2 & UCA0RXIFG) )
-		;
-	#endif
-	retw = UCA0RXBUF << 8;
-	#ifdef RF24_SPI_DRIVER_USCI_USE_IRQ
-	IE2 |= UCA0RXIE;
-	UCA0TXBUF = inw & 0xFF;
-	do {
-		LPM0;
-	} while (UCA0STAT & UCBUSY);
-	#else
-	UCA0TXBUF = inw & 0xFF;
-	while ( !(IFG2 & UCA0RXIFG) )
-		;
-	#endif
-	retw |= UCA0RXBUF;
-	return retw;
-}
-
-int spi_transfer9(int inw)
-{
-	unsigned char p1dir_save, p1out_save, p1ren_save;
-	int retw=0;
-
-	/* Reconfigure I/O ports for bitbanging the MSB */
-	p1ren_save = P1REN; p1out_save = P1OUT; p1dir_save = P1DIR;
-	P1REN &= ~(BIT1 | BIT2 | BIT4);
-	P1OUT &= ~(BIT1 | BIT2 | BIT4);
-	P1DIR = (P1DIR & ~(BIT1 | BIT2 | BIT4)) | BIT2 | BIT4;
-	P1SEL &= ~(BIT1 | BIT2 | BIT4);
-	P1SEL2 &= ~(BIT1 | BIT2 | BIT4);
-
-	// Perform single-bit transfer
-	if (inw & 0x0100)
-		P1OUT |= BIT2;
-	P1OUT |= BIT4;
-	if (P1IN & BIT1)
-		retw |= 0x0100;
-	P1OUT &= ~BIT4;
-
-	// Restore port states and continue with 8-bit SPI
-	P1SEL |= BIT1 | BIT2 | BIT4;
-	P1SEL2 |= BIT1 | BIT2 | BIT4;
-	P1DIR = p1dir_save;
-	P1OUT = p1out_save;
-	P1REN = p1ren_save;
-
-	retw |= spi_transfer( (char)(inw & 0x00FF) );
-	return retw;
-}
-#endif
-
-#if defined(__MSP430_HAS_USCI__) && defined(RF24_SPI_DRIVER_USCI_B) && !defined(__MSP430_HAS_TB3__)
-void spi_init()
-{
-	/* Configure ports on MSP430 device for USCI_B */
-	P1SEL |= BIT5 | BIT6 | BIT7;
-	P1SEL2 |= BIT5 | BIT6 | BIT7;
-
-	/* USCI-B specific SPI setup */
-	UCB0CTL1 |= UCSWRST;
-	UCB0CTL0 = UCCKPH | UCMSB | UCMST | UCMODE_0 | UCSYNC;  // SPI mode 0, master
-	UCB0BR0 = 0x01;  // SPI clocked at same speed as SMCLK
-	UCB0BR1 = 0x00;
-	UCB0CTL1 = UCSSEL_2;  // Clock = SMCLK, clear UCSWRST and enables USCI_B module.
-}
-
-char spi_transfer(char inb)
-{
-	#ifdef RF24_SPI_DRIVER_USCI_USE_IRQ
-	IE2 |= UCB0RXIE;
-	UCB0TXBUF = inb;
-	do {
-		LPM0;
-	} while (UCB0STAT & UCBUSY);
-	#else
-	UCB0TXBUF = inb;
-	while ( !(IFG2 & UCB0RXIFG) )  // Wait for RXIFG indicating remote byte received via SOMI
-		;
-	#endif
-	return UCB0RXBUF;
-}
-
-int spi_transfer16(int inw)
-{
-	int retw;
-
-	#ifdef RF24_SPI_DRIVER_USCI_USE_IRQ
-	IE2 |= UCB0RXIE;
-	UCB0TXBUF = (inw >> 8) & 0xFF;  // Send MSB first...
-	do {
-		LPM0;
-	} while (UCB0STAT & UCBUSY);
-	#else
-	UCB0TXBUF = (inw >> 8) & 0xFF;
-	while ( !(IFG2 & UCB0RXIFG) )
-		;
-	#endif
-	retw = UCB0RXBUF << 8;
-	#ifdef RF24_SPI_DRIVER_USCI_USE_IRQ
-	IE2 |= UCB0RXIE;
-	UCB0TXBUF = inw & 0xFF;
-	do {
-		LPM0;
-	} while (UCB0STAT & UCBUSY);
-	#else
-	UCB0TXBUF = inw & 0xFF;
-	while ( !(IFG2 & UCB0RXIFG) )
-		;
-	#endif
-	retw |= UCB0RXBUF;
-	return retw;
-}
-
-int spi_transfer9(int inw)
-{
-	unsigned char p1dir_save, p1out_save, p1ren_save;
-	int retw=0;
-
-	/* Reconfigure I/O ports for bitbanging the MSB */
-	p1ren_save = P1REN; p1out_save = P1OUT; p1dir_save = P1DIR;
-	P1REN &= ~(BIT5 | BIT6 | BIT7);
-	P1OUT &= ~(BIT5 | BIT6 | BIT7);
-	P1DIR = (P1DIR & ~(BIT5 | BIT6 | BIT7)) | BIT5 | BIT7;
-	P1SEL &= ~(BIT5 | BIT6 | BIT7);
-	P1SEL2 &= ~(BIT5 | BIT6 | BIT7);
-
-	// Perform single-bit transfer
-	if (inw & 0x0100)
-		P1OUT |= BIT7;
-	P1OUT |= BIT5;
-	if (P1IN & BIT4)
-		retw |= 0x0100;
-	P1OUT &= ~BIT5;
-
-	// Restore port states and continue with 8-bit SPI
-	P1SEL |= BIT5 | BIT6 | BIT7;
-	P1SEL2 |= BIT5 | BIT6 | BIT7;
-	P1DIR = p1dir_save;
-	P1OUT = p1out_save;
-	P1REN = p1ren_save;
-
-	retw |= spi_transfer( (char)(inw & 0x00FF) );
-	return retw;
-}
-#endif
-
-// USCI for G2xx4/G2xx5 devices
-#if defined(__MSP430_HAS_USCI__) && defined(RF24_SPI_DRIVER_USCI_A) && defined(__MSP430_HAS_TB3__)
-void spi_init()
-{
-	/* Configure ports on MSP430 device for USCI_A */
-	P3SEL |= BIT0 | BIT4 | BIT5;
-	P3SEL2 &= ~(BIT0 | BIT4 | BIT5);
-
-	/* USCI-A specific SPI setup */
-	UCA0CTL1 |= UCSWRST;
-	UCA0MCTL = 0x00;  // Clearing modulation control per TI user's guide recommendation
-	UCA0CTL0 = UCCKPH | UCMSB | UCMST | UCMODE_0 | UCSYNC;  // SPI mode 0, master
-	UCA0BR0 = 0x01;  // SPI clocked at same speed as SMCLK
-	UCA0BR1 = 0x00;
-	UCA0CTL1 = UCSSEL_2;  // Clock = SMCLK, clear UCSWRST and enables USCI_A module.
-}
-
-char spi_transfer(char inb)
-{
-	#ifdef RF24_SPI_DRIVER_USCI_USE_IRQ
-	IE2 |= UCA0RXIE;
-	UCA0TXBUF = inb;
-	do {
-		LPM0;
-	} while (UCA0STAT & UCBUSY);
-	#else
-	UCA0TXBUF = inb;
-	while ( !(IFG2 & UCA0RXIFG) )  // Wait for RXIFG indicating remote byte received via SOMI
-		;
-	#endif
-	return UCA0RXBUF;
-}
-
-int spi_transfer16(int inw)
-{
-	int retw;
-
-	#ifdef RF24_SPI_DRIVER_USCI_USE_IRQ
-	IE2 |= UCA0RXIE;
-	UCA0TXBUF = (inw >> 8) & 0xFF;  // Send MSB first...
-	do {
-		LPM0;
-	} while (UCA0STAT & UCBUSY);
-	#else
-	UCA0TXBUF = (inw >> 8) & 0xFF;
-	while ( !(IFG2 & UCA0RXIFG) )
-		;
-	#endif
-	retw = UCA0RXBUF << 8;
-	#ifdef RF24_SPI_DRIVER_USCI_USE_IRQ
-	IE2 |= UCA0RXIE;
-	UCA0TXBUF = inw & 0xFF;
-	do {
-		LPM0;
-	} while (UCA0STAT & UCBUSY);
-	#else
-	UCA0TXBUF = inw & 0xFF;
-	while ( !(IFG2 & UCA0RXIFG) )
-		;
-	#endif
-	retw |= UCA0RXBUF;
-	return retw;
-}
-
-int spi_transfer9(int inw)
-{
-	unsigned char p3dir_save, p3out_save, p3ren_save;
-	int retw=0;
-
-	/* Reconfigure I/O ports for bitbanging the MSB */
-	p3ren_save = P3REN; p3out_save = P3OUT; p3dir_save = P3DIR;
-	P3REN &= ~(BIT0 | BIT4 | BIT5);
-	P3OUT &= ~(BIT0 | BIT4 | BIT5);
-	P3DIR = (P3DIR & ~(BIT0 | BIT4 | BIT5)) | BIT0 | BIT4;
-	P3SEL &= ~(BIT0 | BIT4 | BIT5);
-	P3SEL2 &= ~(BIT0 | BIT4 | BIT5);
-
-	// Perform single-bit transfer
-	if (inw & 0x0100)
-		P3OUT |= BIT4;
-	P3OUT |= BIT0;
-	if (P3IN & BIT5)
-		retw |= 0x0100;
-	P3OUT &= ~BIT0;
-
-	// Restore port states and continue with 8-bit SPI
-	P3SEL |= BIT0 | BIT4 | BIT5;
-	P3DIR = p3dir_save;
-	P3OUT = p3out_save;
-	P3REN = p3ren_save;
-
-	retw |= spi_transfer( (char)(inw & 0x00FF) );
-	return retw;
-}
-#endif
-
-#if defined(__MSP430_HAS_USCI__) && defined(RF24_SPI_DRIVER_USCI_B) && defined(__MSP430_HAS_TB3__)
-void spi_init()
-{
-	/* Configure ports on MSP430 device for USCI_B */
-	P3SEL |= BIT1 | BIT2 | BIT3;
-	P3SEL2 &= ~(BIT1 | BIT2 | BIT3);
-
-	/* USCI-B specific SPI setup */
-	UCB0CTL1 |= UCSWRST;
-	UCB0CTL0 = UCCKPH | UCMSB | UCMST | UCMODE_0 | UCSYNC;  // SPI mode 0, master
-	UCB0BR0 = 0x01;  // SPI clocked at same speed as SMCLK
-	UCB0BR1 = 0x00;
-	UCB0CTL1 = UCSSEL_2;  // Clock = SMCLK, clear UCSWRST and enables USCI_B module.
-}
-
-char spi_transfer(char inb)
-{
-	#ifdef RF24_SPI_DRIVER_USCI_USE_IRQ
-	IE2 |= UCB0RXIE;
-	UCB0TXBUF = inb;
-	do {
-		LPM0;
-	} while (UCB0STAT & UCBUSY);
-	#else
-	UCB0TXBUF = inb;
-	while ( !(IFG2 & UCB0RXIFG) )  // Wait for RXIFG indicating remote byte received via SOMI
-		;
-	#endif
-	return UCB0RXBUF;
-}
-
-int spi_transfer16(int inw)
-{
-	int retw;
-
-	#ifdef RF24_SPI_DRIVER_USCI_USE_IRQ
-	IE2 |= UCB0RXIE;
-	UCB0TXBUF = (inw >> 8) & 0xFF;  // Send MSB first...
-	do {
-		LPM0;
-	} while (UCB0STAT & UCBUSY);
-	#else
-	UCB0TXBUF = (inw >> 8) & 0xFF;
-	while ( !(IFG2 & UCB0RXIFG) )
-		;
-	#endif
-	retw = UCB0RXBUF << 8;
-	#ifdef RF24_SPI_DRIVER_USCI_USE_IRQ
-	IE2 |= UCB0RXIE;
-	UCB0TXBUF = inw & 0xFF;
-	do {
-		LPM0;
-	} while (UCB0STAT & UCBUSY);
-	#else
-	UCB0TXBUF = inw & 0xFF;
-	while ( !(IFG2 & UCB0RXIFG) )
-		;
-	#endif
-	retw |= UCB0RXBUF;
-	return retw;
-}
-
-int spi_transfer9(int inw)
-{
-	unsigned char p3dir_save, p3out_save, p3ren_save;
-	int retw=0;
-
-	/* Reconfigure I/O ports for bitbanging the MSB */
-	p3ren_save = P3REN; p3out_save = P3OUT; p3dir_save = P3DIR;
-	P3REN &= ~(BIT1 | BIT2 | BIT3);
-	P3OUT &= ~(BIT1 | BIT2 | BIT3);
-	P3DIR = (P3DIR & ~(BIT1 | BIT2 | BIT3)) | BIT1 | BIT3;
-	P3SEL &= ~(BIT1 | BIT2 | BIT3);
-	P3SEL2 &= ~(BIT1 | BIT2 | BIT3);
-
-	// Perform single-bit transfer
-	if (inw & 0x0100)
-		P3OUT |= BIT1;
-	P3OUT |= BIT3;
-	if (P3IN & BIT2)
-		retw |= 0x0100;
-	P3OUT &= ~BIT3;
-
-	// Restore port states and continue with 8-bit SPI
-	P3SEL |= BIT1 | BIT2 | BIT3;
-	P3DIR = p3dir_save;
-	P3OUT = p3out_save;
-	P3REN = p3ren_save;
-
-	retw |= spi_transfer( (char)(inw & 0x00FF) );
-	return retw;
-}
-#endif
-
-// USCI for F5xxx/6xxx devices--F5172 specific P1SEL settings
-#if defined(__MSP430_HAS_USCI_A0__) && defined(RF24_SPI_DRIVER_USCI_A)
-void spi_init()
-{
-	/* Configure ports on MSP430 device for USCI_A */
-	P1SEL |= BIT0 | BIT1 | BIT2;
-
-	/* USCI-A specific SPI setup */
-	UCA0CTL1 |= UCSWRST;
-	UCA0MCTL = 0x00;  // Clearing modulation control per TI user's guide recommendation
-	UCA0CTL0 = UCCKPH | UCMSB | UCMST | UCMODE_0 | UCSYNC;  // SPI mode 0, master
-	UCA0BR0 = 0x01;  // SPI clocked at same speed as SMCLK
-	UCA0BR1 = 0x00;
-	UCA0CTL1 = UCSSEL_2;  // Clock = SMCLK, clear UCSWRST and enables USCI_A module.
-}
-
-char spi_transfer(char inb)
-{
-	#ifdef RF24_SPI_DRIVER_USCI_USE_IRQ
-	UCA0IE |= UCRXIE;
-	UCA0TXBUF = inb;
-	do {
-		LPM0;
-	} while (UCA0STAT & UCBUSY);
-	#else
-	UCA0TXBUF = inb;
-	while ( !(UCA0IFG & UCRXIFG) )  // Wait for RXIFG indicating remote byte received via SOMI
-		;
-	#endif
-	return UCA0RXBUF;
-}
-
-int spi_transfer16(int inw)
-{
-	int retw;
-
-	#ifdef RF24_SPI_DRIVER_USCI_USE_IRQ
-	UCA0IE |= UCRXIE;
-	UCA0TXBUF = (inw >> 8) & 0xFF;  // Send MSB first...
-	do {
-		LPM0;
-	} while (UCA0STAT & UCBUSY);
-	#else
-	UCA0TXBUF = (inw >> 8) & 0xFF;
-	while ( !(UCA0IFG & UCRXIFG) )
-		;
-	#endif
-	retw = UCA0RXBUF << 8;
-	#ifdef RF24_SPI_DRIVER_USCI_USE_IRQ
-	UCA0IE |= UCRXIE;
-	UCA0TXBUF = inw & 0xFF;
-	do {
-		LPM0;
-	} while (UCA0STAT & UCBUSY);
-	#else
-	UCA0TXBUF = inw & 0xFF;
-	while ( !(UCA0IFG & UCRXIFG) )
-		;
-	#endif
-	retw |= UCA0RXBUF;
-	return retw;
-}
-
-int spi_transfer9(int inw)
-{
-	unsigned char p1dir_save, p1out_save, p1ren_save;
-	int retw=0;
-
-	/* Reconfigure I/O ports for bitbanging the MSB */
-	p1ren_save = P1REN; p1out_save = P1OUT; p1dir_save = P1DIR;
-	P1REN &= ~(BIT0 | BIT1 | BIT2);
-	P1OUT &= ~(BIT0 | BIT1 | BIT2);
-	P1DIR = (P1DIR & ~(BIT0 | BIT1 | BIT2)) | BIT0 | BIT1;
-	P1SEL &= ~(BIT0 | BIT1 | BIT2);
-
-	// Perform single-bit transfer
-	if (inw & 0x0100)
-		P1OUT |= BIT1;
-	P1OUT |= BIT0;
-	if (P1IN & BIT2)
-		retw |= 0x0100;
-	P1OUT &= ~BIT0;
-
-	// Restore port states and continue with 8-bit SPI
-	P1SEL |= BIT0 | BIT1 | BIT2;
-	P1DIR = p1dir_save;
-	P1OUT = p1out_save;
-	P1REN = p1ren_save;
-
-	retw |= spi_transfer( (char)(inw & 0x00FF) );
-	return retw;
-}
-#endif
-
-#if defined(__MSP430_HAS_USCI_B0__) && defined(RF24_SPI_DRIVER_USCI_B)
-void spi_init()
-{
-	/* Configure ports on MSP430 device for USCI_B */
-	P1SEL |= BIT3 | BIT4 | BIT5;
-
-	/* USCI-B specific SPI setup */
-	UCB0CTL1 |= UCSWRST;
-	UCB0CTL0 = UCCKPH | UCMSB | UCMST | UCMODE_0 | UCSYNC;  // SPI mode 0, master
-	UCB0BR0 = 0x01;  // SPI clocked at same speed as SMCLK
-	UCB0BR1 = 0x00;
-	UCB0CTL1 = UCSSEL_2;  // Clock = SMCLK, clear UCSWRST and enables USCI_B module.
-}
-
-char spi_transfer(char inb)
-{
-	#ifdef RF24_SPI_DRIVER_USCI_USE_IRQ
-	UCB0IE |= UCRXIE;
-	UCB0TXBUF = inb;
-	do {
-		LPM0;
-	} while (UCB0STAT & UCBUSY);
-	#else
-	UCB0TXBUF = inb;
-	while ( !(UCB0IFG & UCRXIFG) )  // Wait for RXIFG indicating remote byte received via SOMI
-		;
-	#endif
-	return UCB0RXBUF;
-}
-
-int spi_transfer16(int inw)
-{
-	int retw;
-
-	#ifdef RF24_SPI_DRIVER_USCI_USE_IRQ
-	UCB0IE |= UCRXIE;
-	UCB0TXBUF = (inw >> 8) & 0xFF;  // Send MSB first...
-	do {
-		LPM0;
-	} while (UCB0STAT & UCBUSY);
-	#else
-	UCB0TXBUF = (inw >> 8) & 0xFF;
-	while ( !(UCB0IFG & UCRXIFG) )
-		;
-	#endif
-	retw = UCB0RXBUF << 8;
-	#ifdef RF24_SPI_DRIVER_USCI_USE_IRQ
-	UCB0IE |= UCRXIE;
-	UCB0TXBUF = inw & 0xFF;
-	do {
-		LPM0;
-	} while (UCB0STAT & UCBUSY);
-	#else
-	UCB0TXBUF = inw & 0xFF;
-	while ( !(UCB0IFG & UCRXIFG) )
-		;
-	#endif
-	retw |= UCB0RXBUF;
-	return retw;
-}
-
-int spi_transfer9(int inw)
-{
-	unsigned char p1dir_save, p1out_save, p1ren_save;
-	int retw=0;
-
-	/* Reconfigure I/O ports for bitbanging the MSB */
-	p1ren_save = P1REN; p1out_save = P1OUT; p1dir_save = P1DIR;
-	P1REN &= ~(BIT3 | BIT4 | BIT5);
-	P1OUT &= ~(BIT3 | BIT4 | BIT5);
-	P1DIR = (P1DIR & ~(BIT3 | BIT4 | BIT5)) | BIT3 | BIT4;
-	P1SEL &= ~(BIT3 | BIT4 | BIT5);
-
-	// Perform single-bit transfer
-	if (inw & 0x0100)
-		P1OUT |= BIT4;
-	P1OUT |= BIT3;
-	if (P1IN & BIT5)
-		retw |= 0x0100;
-	P1OUT &= ~BIT3;
-
-	// Restore port states and continue with 8-bit SPI
-	P1SEL |= BIT3 | BIT4 | BIT5;
-	P1DIR = p1dir_save;
-	P1OUT = p1out_save;
-	P1REN = p1ren_save;
-
-	retw |= spi_transfer( (char)(inw & 0x00FF) );
-	return retw;
-}
-#endif
-
+/* SPI drivers now supplied by msp430_spi.c */
 
 
 
 
 /* Basic I/O to the device. */
-unsigned char r_reg(unsigned char addr)
+uint8_t r_reg(uint8_t addr)
 {
-	int i;
+	uint16_t i;
 
 	CSN_EN;
 	i = spi_transfer16(RF24_NOP | ((addr & RF24_REGISTER_MASK) << 8));
-	rf_status = (unsigned char) ((i & 0xFF00) >> 8);
+	rf_status = (uint8_t) ((i & 0xFF00) >> 8);
 	CSN_DIS;
-	return (unsigned char) (i & 0x00FF);
+	return (uint8_t) (i & 0x00FF);
 }
 
-void w_reg(unsigned char addr, char data)
+void w_reg(uint8_t addr, uint8_t data)
 {
-	int i;
+	uint16_t i;
 	CSN_EN;
 	i = spi_transfer16( (data & 0x00FF) | (((addr & RF24_REGISTER_MASK) | RF24_W_REGISTER) << 8) );
-	rf_status = (unsigned char) ((i & 0xFF00) >> 8);
+	rf_status = (uint8_t) ((i & 0xFF00) >> 8);
 	CSN_DIS;
 }
 
-void w_tx_addr(char *addr)
+void w_tx_addr(uint8_t *addr)
 {
-	int i;
+	uint16_t i;
 
 	CSN_EN;
 	rf_status = spi_transfer(RF24_TX_ADDR | RF24_W_REGISTER);
@@ -703,9 +86,9 @@ void w_tx_addr(char *addr)
 	CSN_DIS;
 }
 
-void w_rx_addr(unsigned char pipe, char *addr)
+void w_rx_addr(uint8_t pipe, uint8_t *addr)
 {
-	int i;
+	uint16_t i;
 
 	if (pipe > 5)
 		return;  // Only 6 pipes available
@@ -721,9 +104,9 @@ void w_rx_addr(unsigned char pipe, char *addr)
 	CSN_DIS;
 }
 
-void w_tx_payload(unsigned char len, char *data)
+void w_tx_payload(uint8_t len, uint8_t *data)
 {
-	int i=0;
+	uint16_t i=0;
 	CSN_EN;
 	if (len % 2) {  // Odd payload size?  Make it even by stuffing the command in a 16-bit xfer
 		// Borrowing 'i' to extract STATUS...
@@ -740,9 +123,9 @@ void w_tx_payload(unsigned char len, char *data)
 	CSN_DIS;
 }
 
-void w_tx_payload_noack(unsigned char len, char *data)
+void w_tx_payload_noack(uint8_t len, uint8_t *data)
 {
-	int i=0;
+	uint16_t i=0;
 
 	if ( !(rf_feature & RF24_EN_DYN_ACK) )  // DYN ACK must be enabled to allow NOACK packets
 		return;
@@ -762,20 +145,20 @@ void w_tx_payload_noack(unsigned char len, char *data)
 	CSN_DIS;
 }
 
-unsigned char r_rx_peek_payload_size()
+uint8_t r_rx_peek_payload_size()
 {
-	int i;
+	uint16_t i;
 
 	CSN_EN;
 	i = spi_transfer16(RF24_NOP | (RF24_R_RX_PL_WID << 8));
-	rf_status = (unsigned char) ((i & 0xFF00) >> 8);
+	rf_status = (uint8_t) ((i & 0xFF00) >> 8);
 	CSN_DIS;
-	return (unsigned char) (i & 0x00FF);
+	return (uint8_t) (i & 0x00FF);
 }
 
-unsigned char r_rx_payload(unsigned char len, char *data)
+uint8_t r_rx_payload(uint8_t len, uint8_t *data)
 {
-	int i=0,j;
+	uint16_t i=0,j;
 	CSN_EN;
 	if (len % 2) {
 		// Borrowing 'i' to extract STATUS...
@@ -836,9 +219,9 @@ inline void pulse_ce()
  * When this occurs, the PRX will still only notify its microcontroller of the payload once (the PID field in the packet uniquely
  * identifies it so the PRX knows it's the same packet being retransmitted) but it's obviously wasting on-air time (and power).
  */
-void w_ack_payload(unsigned char pipe, unsigned char len, char *data)
+void w_ack_payload(uint8_t pipe, uint8_t len, uint8_t *data)
 {
-	int i=0;
+	uint16_t i=0;
 	CSN_EN;
 
 	if (pipe > 5)
@@ -867,17 +250,17 @@ void w_ack_payload(unsigned char pipe, unsigned char len, char *data)
 
 
 /* Configuration parameters used to set-up the RF configuration */
-unsigned char rf_crc;
-unsigned char rf_addr_width;
-unsigned char rf_speed_power;
-unsigned char rf_channel;
+uint8_t rf_crc;
+uint8_t rf_addr_width;
+uint8_t rf_speed_power;
+uint8_t rf_channel;
 /* Status variable updated every time SPI I/O is performed */
-unsigned char rf_status;
+uint8_t rf_status;
 /* IRQ state is stored in here after msprf24_get_irq_reason(), RF24_IRQ_FLAGGED raised during
  * the IRQ port ISR--user application issuing LPMx sleep or polling should watch for this to
  * determine if the wakeup reason was due to nRF24 IRQ.
  */
-volatile unsigned char rf_irq;
+volatile uint8_t rf_irq;
 
 
 
@@ -937,7 +320,7 @@ void msprf24_init()
 	spi_transfer(RF24_NOP);
 
 	// Wait 100ms for RF transceiver to initialize.
-	unsigned char c = 20;
+	uint8_t c = 20;
 	for (; c; c--) {
 		__delay_cycles(DELAY_CYCLES_5MS);
 	}
@@ -961,7 +344,7 @@ void msprf24_init()
 	flush_rx();
 }
 
-void msprf24_enable_feature(unsigned char feature)
+void msprf24_enable_feature(uint8_t feature)
 {
 	if ( (rf_feature & feature) != feature ) {
 		rf_feature |= feature;
@@ -970,7 +353,7 @@ void msprf24_enable_feature(unsigned char feature)
 	}
 }
 
-void msprf24_disable_feature(unsigned char feature)
+void msprf24_disable_feature(uint8_t feature)
 {
 	if ( (rf_feature & feature) == feature ) {
 		rf_feature &= ~feature;
@@ -978,9 +361,9 @@ void msprf24_disable_feature(unsigned char feature)
 	}
 }
 
-void msprf24_close_pipe(unsigned char pipeid)
+void msprf24_close_pipe(uint8_t pipeid)
 {
-	unsigned char rxen, enaa;
+	uint8_t rxen, enaa;
 
 	if (pipeid > 5)
 		return;
@@ -1002,9 +385,9 @@ void msprf24_close_pipe_all()
 	w_reg(RF24_DYNPD, 0x00);
 }
 
-void msprf24_open_pipe(unsigned char pipeid, unsigned char autoack)
+void msprf24_open_pipe(uint8_t pipeid, uint8_t autoack)
 {
-	unsigned char rxen, enaa;
+	uint8_t rxen, enaa;
 
 	if (pipeid > 5)
 		return;
@@ -1021,9 +404,9 @@ void msprf24_open_pipe(unsigned char pipeid, unsigned char autoack)
 	w_reg(RF24_EN_AA, enaa);
 }
 
-unsigned char msprf24_pipe_isopen(unsigned char pipeid)
+uint8_t msprf24_pipe_isopen(uint8_t pipeid)
 {
-	unsigned char rxen;
+	uint8_t rxen;
 
 	if (pipeid > 5)
 		return 0;
@@ -1033,9 +416,9 @@ unsigned char msprf24_pipe_isopen(unsigned char pipeid)
 	return ( (1<<pipeid) == (rxen & (1<<pipeid)) );
 }
 
-void msprf24_set_pipe_packetsize(unsigned char pipe, unsigned char size)
+void msprf24_set_pipe_packetsize(uint8_t pipe, uint8_t size)
 {
-	unsigned char dynpdcfg;
+	uint8_t dynpdcfg;
 
 	if (pipe > 5)
 		return;
@@ -1057,9 +440,9 @@ void msprf24_set_pipe_packetsize(unsigned char pipe, unsigned char size)
 	w_reg(RF24_DYNPD, dynpdcfg);
 }
 
-void msprf24_set_retransmit_delay(int us)
+void msprf24_set_retransmit_delay(uint16_t us)
 {
-	unsigned char c;
+	uint8_t c;
 
 	// using 'c' to evaluate current RF speed
 	c = rf_speed_power & RF24_SPEED_MASK;
@@ -1077,45 +460,45 @@ void msprf24_set_retransmit_delay(int us)
 	w_reg(RF24_SETUP_RETR, c | (us & 0xF0));
 }
 
-void msprf24_set_retransmit_count(unsigned char count)
+void msprf24_set_retransmit_count(uint8_t count)
 {
-	unsigned char c;
+	uint8_t c;
 
 	c = r_reg(RF24_SETUP_RETR) & 0xF0;
 	w_reg(RF24_SETUP_RETR, c | (count & 0x0F));
 }
 
-unsigned char msprf24_get_last_retransmits()
+uint8_t msprf24_get_last_retransmits()
 {
 	return r_reg(RF24_OBSERVE_TX) & 0x0F;
 }
 
-unsigned char msprf24_get_lostpackets()
+uint8_t msprf24_get_lostpackets()
 {
 	return (r_reg(RF24_OBSERVE_TX) >> 4) & 0x0F;
 }
 
-inline unsigned char _msprf24_crc_mask()
+inline uint8_t _msprf24_crc_mask()
 {
 	return (rf_crc & 0x0C);
 }
 
-inline unsigned char _msprf24_irq_mask()
+inline uint8_t _msprf24_irq_mask()
 {
 	return ~(RF24_MASK_RX_DR | RF24_MASK_TX_DS | RF24_MASK_MAX_RT);
 }
 
-unsigned char msprf24_is_alive()
+uint8_t msprf24_is_alive()
 {
-	unsigned char aw;
+	uint8_t aw;
 
 	aw = r_reg(RF24_SETUP_AW);
 	return((aw & 0xFC) == 0x00 && (aw & 0x03) != 0x00);
 }
 
-unsigned char msprf24_set_config(unsigned char cfgval)
+uint8_t msprf24_set_config(uint8_t cfgval)
 {
-	unsigned char previous_config;
+	uint8_t previous_config;
 
 	previous_config = r_reg(RF24_CONFIG);
 	w_reg(RF24_CONFIG, (_msprf24_crc_mask() | cfgval) & _msprf24_irq_mask());
@@ -1143,9 +526,9 @@ void msprf24_set_address_width()
 	w_reg(RF24_SETUP_AW, ((rf_addr_width-2) & 0x03));
 }
 
-unsigned char msprf24_current_state()
+uint8_t msprf24_current_state()
 {
-	unsigned char config;
+	uint8_t config;
 
 	if (!msprf24_is_alive())               // Can't read/detect a valid value from SETUP_AW? (typically SPI or device fault)
 		return RF24_STATE_NOTPRESENT;
@@ -1174,7 +557,7 @@ void msprf24_powerdown()
 // Enable Standby-I, 26uA power draw
 void msprf24_standby()
 {
-	unsigned char state = msprf24_current_state();
+	uint8_t state = msprf24_current_state();
 	if (state == RF24_STATE_NOTPRESENT || state == RF24_STATE_STANDBY_I)
 		return;
 	CE_DIS;
@@ -1219,7 +602,7 @@ void msprf24_activate_tx()
 /* Evaluate state of TX, RX FIFOs
  * Compare this with RF24_QUEUE_* #define's from msprf24.h
  */
-unsigned char msprf24_queue_state()
+uint8_t msprf24_queue_state()
 {
 	return r_reg(RF24_FIFO_STATUS);
 }
@@ -1227,11 +610,11 @@ unsigned char msprf24_queue_state()
 /* Scan current channel for activity, produce an 8-bit integer indicating % of time
  * spent with RPD=1 (valid RF activity present) for a 133ms period.
  */
-unsigned char msprf24_scan()
+uint8_t msprf24_scan()
 {
 	int testcount = 1023;
-	unsigned int rpdcount = 0;
-	unsigned char last_state;
+	uint16_t rpdcount = 0;
+	uint8_t last_state;
 
 	last_state = msprf24_current_state();
 	if (last_state != RF24_STATE_PRX)
@@ -1247,11 +630,11 @@ unsigned char msprf24_scan()
 	}
 	if (last_state != RF24_STATE_PRX)
 		msprf24_standby();  // If we weren't in RX mode before, leave it in Standby-I.
-	return( (unsigned char) (rpdcount/4) );
+	return( (uint8_t) (rpdcount/4) );
 }
 
 // Check if there is pending RX fifo data
-unsigned char msprf24_rx_pending()
+uint8_t msprf24_rx_pending()
 {
 	CSN_EN;
 	rf_status = spi_transfer(RF24_NOP);
@@ -1263,33 +646,38 @@ unsigned char msprf24_rx_pending()
 }
 
 // Get IRQ flag status
-unsigned char msprf24_get_irq_reason()
+uint8_t msprf24_get_irq_reason()
 {
+	uint8_t rf_irq_old = rf_irq;
+
 	//rf_irq &= ~RF24_IRQ_FLAGGED;  -- Removing in lieu of having this check determined at irq_clear() time
 	CSN_EN;
 	rf_status = spi_transfer(RF24_NOP);
 	CSN_DIS;
-	rf_irq = rf_status & RF24_IRQ_MASK;
+	rf_irq = (rf_status & RF24_IRQ_MASK) | rf_irq_old;
 	return rf_irq;
 }
 
 /* Clear IRQ flags */
-void msprf24_irq_clear(unsigned char irqflag)
+void msprf24_irq_clear(uint8_t irqflag)
 {
-	rf_irq &= ~RF24_IRQ_FLAGGED;  /* We clear this, then decide later if it should be re-set.
-				       * Helps avoid race conditions where an IRQ fires between STATUS read
-				       * and handling of the RF24_IRQ_FLAGGED bit.
-				       */
-        CSN_EN;
-	rf_status = spi_transfer(RF24_STATUS | RF24_W_REGISTER);
-	if (irqflag & RF24_IRQ_RX && ((rf_status & 0x0E) < 0x0E))
-		irqflag &= ~RF24_IRQ_RX;  // If there is still RX data pending, prevent user from clearing RX IRQ.
-	spi_transfer(irqflag);
-        CSN_DIS;
+	uint8_t fifostat;
 
-	rf_irq = (rf_irq & ~RF24_IRQ_MASK) | (rf_status & RF24_IRQ_MASK & ~irqflag);
-	if (rf_irq & RF24_IRQ_MASK)
-		rf_irq |= RF24_IRQ_FLAGGED;
+	rf_irq = 0x00;  // Clear IRQs; afterward analyze RX FIFO to see if we should re-set RX IRQ flag.
+	CSN_EN;
+	rf_status = spi_transfer(RF24_STATUS | RF24_W_REGISTER);
+	spi_transfer(irqflag);
+	CSN_DIS;
+
+	// Per datasheet procedure, check FIFO_STATUS to see if there's more RX FIFO data to process.
+	if (irqflag & RF24_IRQ_RX) {
+		CSN_EN;
+		rf_status = spi_transfer(RF24_FIFO_STATUS | RF24_R_REGISTER);
+		fifostat = spi_transfer(RF24_NOP);
+		CSN_DIS;
+		if ( !(fifostat & RF24_RX_EMPTY) )
+			rf_irq |= RF24_IRQ_RX | RF24_IRQ_FLAGGED;  // Signal to user that there is remaining data, even if it's not "new"
+	}
 }
 
 
@@ -1308,7 +696,7 @@ void msprf24_irq_clear(unsigned char irqflag)
 #pragma vector = USI_VECTOR
 __interrupt void USI_TXRX (void) {
 	USICTL1 &= ~USIIFG;  // Clear interrupt
-        __bic_SR_register_on_exit(LPM0_bits);    // Clear LPM0 bits from 0(SR)
+	__bic_SR_register_on_exit(LPM0_bits);    // Clear LPM0 bits from 0(SR)
 }
 #endif
 
@@ -1353,21 +741,21 @@ __interrupt void USCI_B0(void) {
 #if   nrfIRQport == 2
 #pragma vector = PORT2_VECTOR
 __interrupt void P2_IRQ (void) {
-        if(P2IFG & nrfIRQpin){
-                __bic_SR_register_on_exit(LPM4_bits);    // Wake up
+	if(P2IFG & nrfIRQpin){
+		__bic_SR_register_on_exit(LPM4_bits);    // Wake up
 		rf_irq |= RF24_IRQ_FLAGGED;
 		P2IFG &= ~nrfIRQpin;   // Clear interrupt flag
-        }
+	}
 }
 
 #elif nrfIRQport == 1
 #pragma vector = PORT1_VECTOR
 __interrupt void P1_IRQ (void){
-        if(P1IFG & nrfIRQpin){
-                __bic_SR_register_on_exit(LPM4_bits);
+	if(P1IFG & nrfIRQpin){
+		__bic_SR_register_on_exit(LPM4_bits);
 		rf_irq |= RF24_IRQ_FLAGGED;
 		P1IFG &= ~nrfIRQpin;
-        }
+	}
 }
 #endif
 
