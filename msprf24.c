@@ -694,7 +694,7 @@ void msprf24_irq_clear(uint8_t irqflag)
 // SPI driver interrupt vector--USI
 #ifdef __MSP430_HAS_USI__
 #pragma vector = USI_VECTOR
-__interrupt void USI_TXRX (void) {
+__interrupt void __attribute__((interrupt (USI_VECTOR))) USI_TXRX (void) {
 	USICTL1 &= ~USIIFG;  // Clear interrupt
 	__bic_SR_register_on_exit(LPM0_bits);    // Clear LPM0 bits from 0(SR)
 }
@@ -703,7 +703,7 @@ __interrupt void USI_TXRX (void) {
 // SPI driver interrupt vector--USCI F2xxx/G2xxx
 #if defined(__MSP430_HAS_USCI__) && defined(RF24_SPI_DRIVER_USCI_PROVIDE_ISR)
 #pragma vector = USCIAB0RX_VECTOR
-__interrupt void USCI_RX(void) {
+__interrupt void __attribute__((interrupt (USCIAB0RX_VECTOR))) USCI_RX(void) {
 
 	#ifdef RF24_SPI_DRIVER_USCI_A
 	IE2 &= ~UCA0RXIE;
@@ -720,7 +720,7 @@ __interrupt void USCI_RX(void) {
 // SPI driver interrupt vector--USCI F5xxx/6xxx
 #if defined(__MSP430_HAS_USCI_A0__) && defined(RF24_SPI_DRIVER_USCI_PROVIDE_ISR) && defined(RF24_SPI_DRIVER_USCI_A)
 #pragma vector = USCI_A0_VECTOR
-__interrupt void USCI_A0(void) {
+__interrupt void __attribute__((interrupt (USCI_A0_VECTOR))) USCI_A0(void) {
 	UCA0IE &= ~UCRXIE;
 	__bic_SR_register_on_exit(LPM0_bits);
 }
@@ -728,7 +728,7 @@ __interrupt void USCI_A0(void) {
 
 #if defined(__MSP430_HAS_USCI_B0__) && defined(RF24_SPI_DRIVER_USCI_PROVIDE_ISR) && defined(RF24_SPI_DRIVER_USCI_B)
 #pragma vector = USCI_B0_VECTOR
-__interrupt void USCI_B0(void) {
+__interrupt void __attribute__((interrupt (USCI_B0_VECTOR))) USCI_B0(void) {
 	UCB0IE &= ~UCRXIE;
 	__bic_SR_register_on_exit(LPM0_bits);
 }
@@ -740,7 +740,7 @@ __interrupt void USCI_B0(void) {
 // RF transceiver IRQ handling
 #if   nrfIRQport == 2
 #pragma vector = PORT2_VECTOR
-__interrupt void P2_IRQ (void) {
+__interrupt void __attribute__((interrupt (PORT2_VECTOR))) P2_IRQ (void) {
 	if(P2IFG & nrfIRQpin){
 		__bic_SR_register_on_exit(LPM4_bits);    // Wake up
 		rf_irq |= RF24_IRQ_FLAGGED;
@@ -750,7 +750,7 @@ __interrupt void P2_IRQ (void) {
 
 #elif nrfIRQport == 1
 #pragma vector = PORT1_VECTOR
-__interrupt void P1_IRQ (void){
+__interrupt void __attribute__((interrupt (PORT1_VECTOR))) P1_IRQ (void){
 	if(P1IFG & nrfIRQpin){
 		__bic_SR_register_on_exit(LPM4_bits);
 		rf_irq |= RF24_IRQ_FLAGGED;
