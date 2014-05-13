@@ -76,7 +76,7 @@ void w_reg(uint8_t addr, uint8_t data)
 
 void w_tx_addr(uint8_t *addr)
 {
-	uint16_t i;
+	int i;
 
 	CSN_EN;
 	rf_status = spi_transfer(RF24_TX_ADDR | RF24_W_REGISTER);
@@ -88,7 +88,7 @@ void w_tx_addr(uint8_t *addr)
 
 void w_rx_addr(uint8_t pipe, uint8_t *addr)
 {
-	uint16_t i;
+	int i;
 
 	if (pipe > 5)
 		return;  // Only 6 pipes available
@@ -691,57 +691,16 @@ void msprf24_irq_clear(uint8_t irqflag)
 
 /*      -       -       Interrupt vectors       -       -       */
 
-// SPI driver interrupt vector--USI
-#ifdef __MSP430_HAS_USI__
-#pragma vector = USI_VECTOR
-__interrupt void USI_TXRX (void) {
-	USICTL1 &= ~USIIFG;  // Clear interrupt
-	__bic_SR_register_on_exit(LPM0_bits);    // Clear LPM0 bits from 0(SR)
-}
-#endif
-
-// SPI driver interrupt vector--USCI F2xxx/G2xxx
-#if defined(__MSP430_HAS_USCI__) && defined(RF24_SPI_DRIVER_USCI_PROVIDE_ISR)
-#pragma vector = USCIAB0RX_VECTOR
-__interrupt void USCI_RX(void) {
-
-	#ifdef RF24_SPI_DRIVER_USCI_A
-	IE2 &= ~UCA0RXIE;
-	#endif
-
-	#ifdef RF24_SPI_DRIVER_USCI_B
-	IE2 &= ~UCB0RXIE;
-	#endif
-
-	__bic_SR_register_on_exit(LPM0_bits);  // Clear LPM0 mode
-}
-#endif
-
-// SPI driver interrupt vector--USCI F5xxx/6xxx
-#if defined(__MSP430_HAS_USCI_A0__) && defined(RF24_SPI_DRIVER_USCI_PROVIDE_ISR) && defined(RF24_SPI_DRIVER_USCI_A)
-#pragma vector = USCI_A0_VECTOR
-__interrupt void USCI_A0(void) {
-	UCA0IE &= ~UCRXIE;
-	__bic_SR_register_on_exit(LPM0_bits);
-}
-#endif
-
-#if defined(__MSP430_HAS_USCI_B0__) && defined(RF24_SPI_DRIVER_USCI_PROVIDE_ISR) && defined(RF24_SPI_DRIVER_USCI_B)
-#pragma vector = USCI_B0_VECTOR
-__interrupt void USCI_B0(void) {
-	UCB0IE &= ~UCRXIE;
-	__bic_SR_register_on_exit(LPM0_bits);
-}
-#endif
-
-
-
-
 // RF transceiver IRQ handling
 #if   nrfIRQport == 2
-#pragma vector = PORT2_VECTOR
-__interrupt void P2_IRQ (void) {
-	if(P2IFG & nrfIRQpin){
+  #ifdef __GNUC__
+  __attribute__((interrupt(PORT2_VECTOR)))
+  void P2_IRQ (void) {
+  #else
+  #pragma vector = PORT2_VECTOR
+  __interrupt void P2_IRQ (void) {
+  #endif
+	if(P2IFG & nrfIRQpin) {
 		__bic_SR_register_on_exit(LPM4_bits);    // Wake up
 		rf_irq |= RF24_IRQ_FLAGGED;
 		P2IFG &= ~nrfIRQpin;   // Clear interrupt flag
@@ -749,12 +708,47 @@ __interrupt void P2_IRQ (void) {
 }
 
 #elif nrfIRQport == 1
-#pragma vector = PORT1_VECTOR
-__interrupt void P1_IRQ (void){
-	if(P1IFG & nrfIRQpin){
+  #ifdef __GNUC__
+  __attribute__((interrupt(PORT1_VECTOR)))
+  void P1_IRQ (void) {
+  #else
+  #pragma vector = PORT1_VECTOR
+  __interrupt void P1_IRQ (void) {
+  #endif
+	if(P1IFG & nrfIRQpin) {
 		__bic_SR_register_on_exit(LPM4_bits);
 		rf_irq |= RF24_IRQ_FLAGGED;
 		P1IFG &= ~nrfIRQpin;
+	}
+}
+
+#elif nrfIRQport == 3 && defined(P3IV_)
+  #ifdef __GNUC__
+  __attribute__((interrupt(PORT3_VECTOR)))
+  void P3_IRQ (void) {
+  #else
+  #pragma vector = PORT3_VECTOR
+  __interrupt void P3_IRQ (void) {
+  #endif
+	if (P3IFG & nrfIRQpin) {
+		__bic_SR_register_on_exit(LPM4_bits);
+		rf_irq |= RF24_IRQ_FLAGGED;
+		P3IFG &= ~nrfIRQpin;
+	}
+}
+
+#elif nrfIRQport == 4 && defined(P4IV_)
+  #ifdef __GNUC__
+  __attribute__((interrupt(PORT4_VECTOR)))
+  void P4_IRQ (void) {
+  #else
+  #pragma vector = PORT4_VECTOR
+  __interrupt void P4_IRQ (void) {
+  #endif
+	if (P4IFG & nrfIRQpin) {
+		__bic_SR_register_on_exit(LPM4_bits);
+		rf_irq |= RF24_IRQ_FLAGGED;
+		P4IFG &= ~nrfIRQpin;
 	}
 }
 #endif

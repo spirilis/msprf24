@@ -4,7 +4,7 @@
 
 volatile unsigned int user;
 
-void main()
+int main()
 {
 	uint8_t addr[5];
 	uint8_t buf[32];
@@ -42,4 +42,5 @@ void main()
 		msprf24_get_irq_reason();
 		user = msprf24_get_last_retransmits();
 	}
+	return 0;
 }

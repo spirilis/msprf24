@@ -31,7 +31,7 @@ __interrupt void WDT_ISR(void)
 }
 
 
-void main()
+int main()
 {
 	uint8_t addr[5];
 	uint8_t buf[32];
@@ -83,4 +83,5 @@ void main()
 
 		wdt_sleep(10);  // ~500ms LPM3 sleep
 	}
+	return 0;
 }

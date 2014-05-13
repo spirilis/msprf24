@@ -50,12 +50,8 @@
  * Applies only to USCI devices.  USI users can keep these
  * commented out.
  */
-//#define RF24_SPI_DRIVER_USCI_A 1
-#define RF24_SPI_DRIVER_USCI_B 1
-
-/* Define whether this library should use LPM0+IRQs during SPI I/O and whether this library should provide the ISR. */
-#define RF24_SPI_DRIVER_USCI_USE_IRQ 1
-#define RF24_SPI_DRIVER_USCI_PROVIDE_ISR 1
+//#define SPI_DRIVER_USCI_A 1
+#define SPI_DRIVER_USCI_B 1
 
 
 /* Operational pins -- IRQ, CE, CSN (SPI chip-select)
