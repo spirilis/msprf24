@@ -76,7 +76,7 @@ void w_reg(uint8_t addr, uint8_t data)
 
 void w_tx_addr(uint8_t *addr)
 {
-	uint16_t i;
+	int i;
 
 	CSN_EN;
 	rf_status = spi_transfer(RF24_TX_ADDR | RF24_W_REGISTER);
@@ -88,7 +88,7 @@ void w_tx_addr(uint8_t *addr)
 
 void w_rx_addr(uint8_t pipe, uint8_t *addr)
 {
-	uint16_t i;
+	int i;
 
 	if (pipe > 5)
 		return;  // Only 6 pipes available
