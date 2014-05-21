@@ -24,6 +24,7 @@
 
 #include <msp430.h>
 #include "msp430_spi.h"
+#include "nrf_userconfig.h"
 
 
 #ifdef __MSP430_HAS_USI__
