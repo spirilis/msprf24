@@ -40,39 +40,30 @@ void spi_init()
 
 uint8_t spi_transfer(uint8_t inb)
 {
-	USICTL1 |= USIIE;
 	USISRL = inb;
 	USICNT = 8;            // Start SPI transfer
-	do {
-		LPM0;                  // Light sleep while transferring
-	} while (USICNT & 0x1F);
-	USICTL1 &= ~USIIE;
+	while ( !(USICTL1 & USIIFG) )
+		;
 	return USISRL;
 }
 
 /* What wonderful toys TI gives us!  A 16-bit SPI function. */
 uint16_t spi_transfer16(uint16_t inw)
 {
-	USICTL1 |= USIIE;
 	USISR = inw;
 	USICNT = 16 | USI16B;  // Start 16-bit SPI transfer
-	do {
-		LPM0;                  // Light sleep while transferring
-	} while (USICNT & 0x1F);
-	USICTL1 &= ~USIIE;
+	while ( !(USICTL1 & USIIFG) )
+		;
 	return USISR;
 }
 
 /* Not used by msprf24, but added for courtesy (LCD display support).  9-bit SPI. */
 uint16_t spi_transfer9(uint16_t inw)
 {
-	USICTL1 |= USIIE;
 	USISR = inw;
 	USICNT = 9 | USI16B;  // Start 9-bit SPI transfer
-	do {
-		LPM0;                  // Light sleep while transferring
-	} while (USICNT & 0x1F);
-	USICTL1 &= ~USIIE;
+	while ( !(USICTL1 & USIIFG) )
+		;
 	return USISR;
 }
 #endif

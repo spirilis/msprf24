@@ -56,6 +56,8 @@ int main()
 	msprf24_init();  // All RX pipes closed by default
 	msprf24_set_pipe_packetsize(0, 0);
 	msprf24_open_pipe(0, 1);  // Open pipe#0 with Enhanced ShockBurst enabled for receiving Auto-ACKs
+        // Note: Pipe#0 is hardcoded in the transceiver hardware as the designated "pipe" for a TX node to receive
+        // auto-ACKs.  This does not have to match the pipe# used on the RX side.
 
 	// Transmit to 0xDEADBEEF01
 	msprf24_standby();
