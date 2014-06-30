@@ -288,6 +288,20 @@ void msprf24_init()
 		P2IES |= nrfIRQpin;   // Trigger on falling-edge
 		P2IFG &= ~nrfIRQpin;  // Clear any outstanding IRQ
 		P2IE |= nrfIRQpin;    // Enable IRQ interrupt
+	#elif nrfIRQport == 3
+		P3DIR &= ~nrfIRQpin;  // IRQ line is input
+		P3OUT |= nrfIRQpin;   // Pull-up resistor enabled
+		P3REN |= nrfIRQpin;
+		P3IES |= nrfIRQpin;   // Trigger on falling-edge
+		P3IFG &= ~nrfIRQpin;  // Clear any outstanding IRQ
+		P3IE |= nrfIRQpin;    // Enable IRQ interrupt
+	#elif nrfIRQport == 2
+		P4DIR &= ~nrfIRQpin;  // IRQ line is input
+		P4OUT |= nrfIRQpin;   // Pull-up resistor enabled
+		P4REN |= nrfIRQpin;
+		P4IES |= nrfIRQpin;   // Trigger on falling-edge
+		P4IFG &= ~nrfIRQpin;  // Clear any outstanding IRQ
+		P4IE |= nrfIRQpin;    // Enable IRQ interrupt
 	#endif
 
 	// Setup CSN/CE ports
@@ -296,6 +310,18 @@ void msprf24_init()
 	#elif nrfCSNport == 2
 		P2DIR |= nrfCSNpin;
 	#elif nrfCSNport == 3
+		P3DIR |= nrfCSNpin;
+	#elif nrfCSNport == 4
+		P3DIR |= nrfCSNpin;
+	#elif nrfCSNport == 5
+		P3DIR |= nrfCSNpin;
+	#elif nrfCSNport == 6
+		P3DIR |= nrfCSNpin;
+	#elif nrfCSNport == 7
+		P3DIR |= nrfCSNpin;
+	#elif nrfCSNport == 8
+		P3DIR |= nrfCSNpin;
+	#elif nrfCSNport == 9
 		P3DIR |= nrfCSNpin;
 	#elif nrfCSNport == J
 		PJDIR |= nrfCSNpin;
@@ -307,6 +333,18 @@ void msprf24_init()
 	#elif nrfCEport == 2
 		P2DIR |= nrfCEpin;
 	#elif nrfCEport == 3
+		P3DIR |= nrfCEpin;
+	#elif nrfCEport == 4
+		P3DIR |= nrfCEpin;
+	#elif nrfCEport == 5
+		P3DIR |= nrfCEpin;
+	#elif nrfCEport == 6
+		P3DIR |= nrfCEpin;
+	#elif nrfCEport == 7
+		P3DIR |= nrfCEpin;
+	#elif nrfCEport == 8
+		P3DIR |= nrfCEpin;
+	#elif nrfCEport == 9
 		P3DIR |= nrfCEpin;
 	#elif nrfCEport == J
 		PJDIR |= nrfCEpin;
