@@ -547,7 +547,7 @@ void msprf24_set_speed_power()
 {
 	if ( (rf_speed_power & RF24_SPEED_MASK) == RF24_SPEED_MASK )  // Speed setting RF_DR_LOW=1, RF_DR_HIGH=1 is reserved, clamp it to minimum
 		rf_speed_power = (rf_speed_power & ~RF24_SPEED_MASK) | RF24_SPEED_MIN;
-	w_reg(RF24_RF_SETUP, (rf_speed_power & 0x2E));
+	w_reg(RF24_RF_SETUP, (rf_speed_power & 0x2F));
 }
 
 void msprf24_set_channel()
