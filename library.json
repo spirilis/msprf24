@@ -8,5 +8,5 @@
     "url": "https://github.com/spirilis/msprf24.git"
   },
   "examples": "TESTPROGS/*/*.c",
-  "platforms": "msp430"
+  "platforms": "timsp430"
 }
