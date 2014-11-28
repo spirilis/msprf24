@@ -1,6 +1,6 @@
 {
   "name": "nRF24",
-  "keywords": "rf, radio, spi",
+  "keywords": "rf, radio, wireless, spi",
   "description": "The nRF24L01 is a low-cost 2.4GHz ISM transceiver module. It supports a number of channel frequencies in the 2.4GHz band and a range of data rates",
   "repository":
   {
