@@ -295,13 +295,55 @@ void msprf24_init()
 		P3IES |= nrfIRQpin;   // Trigger on falling-edge
 		P3IFG &= ~nrfIRQpin;  // Clear any outstanding IRQ
 		P3IE |= nrfIRQpin;    // Enable IRQ interrupt
-	#elif nrfIRQport == 2
+	#elif nrfIRQport == 4
 		P4DIR &= ~nrfIRQpin;  // IRQ line is input
 		P4OUT |= nrfIRQpin;   // Pull-up resistor enabled
 		P4REN |= nrfIRQpin;
 		P4IES |= nrfIRQpin;   // Trigger on falling-edge
 		P4IFG &= ~nrfIRQpin;  // Clear any outstanding IRQ
 		P4IE |= nrfIRQpin;    // Enable IRQ interrupt
+	#elif nrfIRQport == 5
+		P5DIR &= ~nrfIRQpin;  // IRQ line is input
+		P5OUT |= nrfIRQpin;   // Pull-up resistor enabled
+		P5REN |= nrfIRQpin;
+		P5IES |= nrfIRQpin;   // Trigger on falling-edge
+		P5IFG &= ~nrfIRQpin;  // Clear any outstanding IRQ
+		P5IE |= nrfIRQpin;    // Enable IRQ interrupt
+	#elif nrfIRQport == 6
+		P6DIR &= ~nrfIRQpin;  // IRQ line is input
+		P6OUT |= nrfIRQpin;   // Pull-up resistor enabled
+		P6REN |= nrfIRQpin;
+		P6IES |= nrfIRQpin;   // Trigger on falling-edge
+		P6IFG &= ~nrfIRQpin;  // Clear any outstanding IRQ
+		P6IE |= nrfIRQpin;    // Enable IRQ interrupt
+	#elif nrfIRQport == 7
+		P7DIR &= ~nrfIRQpin;  // IRQ line is input
+		P7OUT |= nrfIRQpin;   // Pull-up resistor enabled
+		P7REN |= nrfIRQpin;
+		P7IES |= nrfIRQpin;   // Trigger on falling-edge
+		P7IFG &= ~nrfIRQpin;  // Clear any outstanding IRQ
+		P7IE |= nrfIRQpin;    // Enable IRQ interrupt
+	#elif nrfIRQport == 8
+		P8DIR &= ~nrfIRQpin;  // IRQ line is input
+		P8OUT |= nrfIRQpin;   // Pull-up resistor enabled
+		P8REN |= nrfIRQpin;
+		P8IES |= nrfIRQpin;   // Trigger on falling-edge
+		P8IFG &= ~nrfIRQpin;  // Clear any outstanding IRQ
+		P8IE |= nrfIRQpin;    // Enable IRQ interrupt
+	#elif nrfIRQport == 9
+		P9DIR &= ~nrfIRQpin;  // IRQ line is input
+		P9OUT |= nrfIRQpin;   // Pull-up resistor enabled
+		P9REN |= nrfIRQpin;
+		P9IES |= nrfIRQpin;   // Trigger on falling-edge
+		P9IFG &= ~nrfIRQpin;  // Clear any outstanding IRQ
+		P9IE |= nrfIRQpin;    // Enable IRQ interrupt
+	#elif nrfIRQport == 10
+		P10DIR &= ~nrfIRQpin;  // IRQ line is input
+		P10OUT |= nrfIRQpin;   // Pull-up resistor enabled
+		P10REN |= nrfIRQpin;
+		P10IES |= nrfIRQpin;   // Trigger on falling-edge
+		P10IFG &= ~nrfIRQpin;  // Clear any outstanding IRQ
+		P10IE |= nrfIRQpin;    // Enable IRQ interrupt
 	#endif
 
 	// Setup CSN/CE ports
@@ -312,17 +354,19 @@ void msprf24_init()
 	#elif nrfCSNport == 3
 		P3DIR |= nrfCSNpin;
 	#elif nrfCSNport == 4
-		P3DIR |= nrfCSNpin;
+		P4DIR |= nrfCSNpin;
 	#elif nrfCSNport == 5
-		P3DIR |= nrfCSNpin;
+		P5DIR |= nrfCSNpin;
 	#elif nrfCSNport == 6
-		P3DIR |= nrfCSNpin;
+		P6DIR |= nrfCSNpin;
 	#elif nrfCSNport == 7
-		P3DIR |= nrfCSNpin;
+		P7DIR |= nrfCSNpin;
 	#elif nrfCSNport == 8
-		P3DIR |= nrfCSNpin;
+		P8DIR |= nrfCSNpin;
 	#elif nrfCSNport == 9
-		P3DIR |= nrfCSNpin;
+		P9DIR |= nrfCSNpin;
+	#elif nrfCSNport == 10
+		P10DIR |= nrfCSNpin;
 	#elif nrfCSNport == J
 		PJDIR |= nrfCSNpin;
 	#endif
@@ -335,17 +379,19 @@ void msprf24_init()
 	#elif nrfCEport == 3
 		P3DIR |= nrfCEpin;
 	#elif nrfCEport == 4
-		P3DIR |= nrfCEpin;
+		P4DIR |= nrfCEpin;
 	#elif nrfCEport == 5
-		P3DIR |= nrfCEpin;
+		P5DIR |= nrfCEpin;
 	#elif nrfCEport == 6
-		P3DIR |= nrfCEpin;
+		P6DIR |= nrfCEpin;
 	#elif nrfCEport == 7
-		P3DIR |= nrfCEpin;
+		P7DIR |= nrfCEpin;
 	#elif nrfCEport == 8
-		P3DIR |= nrfCEpin;
+		P8DIR |= nrfCEpin;
 	#elif nrfCEport == 9
-		P3DIR |= nrfCEpin;
+		P9DIR |= nrfCEpin;
+	#elif nrfCEport == 10
+		P10DIR |= nrfCEpin;
 	#elif nrfCEport == J
 		PJDIR |= nrfCEpin;
 	#endif
@@ -787,6 +833,96 @@ void msprf24_irq_clear(uint8_t irqflag)
 		__bic_SR_register_on_exit(LPM4_bits);
 		rf_irq |= RF24_IRQ_FLAGGED;
 		P4IFG &= ~nrfIRQpin;
+	}
+}
+
+#elif nrfIRQport == 5 && defined(P5IV_)
+  #ifdef __GNUC__
+  __attribute__((interrupt(PORT5_VECTOR)))
+  void P5_IRQ (void) {
+  #else
+  #pragma vector = PORT5_VECTOR
+  __interrupt void P5_IRQ (void) {
+  #endif
+	if (P5IFG & nrfIRQpin) {
+		__bic_SR_register_on_exit(LPM4_bits);
+		rf_irq |= RF24_IRQ_FLAGGED;
+		P5IFG &= ~nrfIRQpin;
+	}
+}
+
+#elif nrfIRQport == 6 && defined(P6IV_)
+  #ifdef __GNUC__
+  __attribute__((interrupt(PORT6_VECTOR)))
+  void P6_IRQ (void) {
+  #else
+  #pragma vector = PORT6_VECTOR
+  __interrupt void P6_IRQ (void) {
+  #endif
+	if (P6IFG & nrfIRQpin) {
+		__bic_SR_register_on_exit(LPM4_bits);
+		rf_irq |= RF24_IRQ_FLAGGED;
+		P6IFG &= ~nrfIRQpin;
+	}
+}
+
+#elif nrfIRQport == 7 && defined(P7IV_)
+  #ifdef __GNUC__
+  __attribute__((interrupt(PORT7_VECTOR)))
+  void P7_IRQ (void) {
+  #else
+  #pragma vector = PORT7_VECTOR
+  __interrupt void P7_IRQ (void) {
+  #endif
+	if (P7IFG & nrfIRQpin) {
+		__bic_SR_register_on_exit(LPM4_bits);
+		rf_irq |= RF24_IRQ_FLAGGED;
+		P7IFG &= ~nrfIRQpin;
+	}
+}
+
+#elif nrfIRQport == 8 && defined(P8IV_)
+  #ifdef __GNUC__
+  __attribute__((interrupt(PORT8_VECTOR)))
+  void P8_IRQ (void) {
+  #else
+  #pragma vector = PORT8_VECTOR
+  __interrupt void P8_IRQ (void) {
+  #endif
+	if (P8IFG & nrfIRQpin) {
+		__bic_SR_register_on_exit(LPM4_bits);
+		rf_irq |= RF24_IRQ_FLAGGED;
+		P8IFG &= ~nrfIRQpin;
+	}
+}
+
+#elif nrfIRQport == 9 && defined(P9IV_)
+  #ifdef __GNUC__
+  __attribute__((interrupt(PORT9_VECTOR)))
+  void P9_IRQ (void) {
+  #else
+  #pragma vector = PORT9_VECTOR
+  __interrupt void P9_IRQ (void) {
+  #endif
+	if (P9IFG & nrfIRQpin) {
+		__bic_SR_register_on_exit(LPM4_bits);
+		rf_irq |= RF24_IRQ_FLAGGED;
+		P9IFG &= ~nrfIRQpin;
+	}
+}
+
+#elif nrfIRQport == 10 && defined(P10IV_)
+  #ifdef __GNUC__
+  __attribute__((interrupt(PORT10_VECTOR)))
+  void P10_IRQ (void) {
+  #else
+  #pragma vector = PORT10_VECTOR
+  __interrupt void P10_IRQ (void) {
+  #endif
+	if (P10IFG & nrfIRQpin) {
+		__bic_SR_register_on_exit(LPM4_bits);
+		rf_irq |= RF24_IRQ_FLAGGED;
+		P10IFG &= ~nrfIRQpin;
 	}
 }
 #endif
