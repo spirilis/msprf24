@@ -14,6 +14,12 @@ into its buffers and then transmit them out.  These packets can be assigned to d
 nRF24L01+ RF addresses, and it will work out how it wants to pack subsequent packets
 intended for the same RF address if appropriate.
 
+Multiple send()'s may be run ending in a single flush(); the default "TX queue depth"
+is 3, i.e. three send()'s can be run before it kicks back false and silently discards
+your next send().  The payload within each packet can't exceed 16 bytes by default.
+16 bytes would be 18 in the frame (add program ID + length bytes), so that doesn't
+quite fit 2 packets per nRF24 frame.
+
 On the RX side, you will set up the pipes using msprf24 and the RX address with msprf24's
 w_rx_addr - keep in mind the Pkt interface is only designed to know about pipe#1 for RX,
 since it's derived from Enrf24 which only acknowledged the presence of one RX pipe.
