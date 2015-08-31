@@ -93,3 +93,7 @@ typedef void(*PKT_CALLBACK)(const uint8_t progID, const int len, const void *buf
 
 6. During active TX mode, i.e. within the library's flush() function, the library
    will enter LPM0 while waiting for the nRF24 IRQ to fire and rf_irq to get updated.
+
+7. If AutoACK is enabled, and TX fails, it does so silently; this library will not
+   try to re-submit the TX that failed and it has no way of notifying you that it
+   failed.  Might have to think this one through deeper if it's important enough.
