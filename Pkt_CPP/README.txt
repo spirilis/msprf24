@@ -88,3 +88,8 @@ typedef void(*PKT_CALLBACK)(const uint8_t progID, const int len, const void *buf
    This can be adjusted using setMaxPrograms() - note this call will induce a free()
    followed by malloc() to allocate a new array of program ID + callback function
    pointer structures.
+   ** Note: If I do decide to excise malloc/free, this function along with the
+            setTXqueueDepth function will disappear.
+
+6. During active TX mode, i.e. within the library's flush() function, the library
+   will enter LPM0 while waiting for the nRF24 IRQ to fire and rf_irq to get updated.
