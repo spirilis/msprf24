@@ -54,7 +54,10 @@ int main() {
 
 A few items of trivia to note:
 
-1. This library uses malloc().  It's not going away.
+1. This library uses malloc().  It might go away.  Probably would be appropriate
+   to have the library stick to #define's defaults instead of letting it be
+   dynamic; the dynamic TX queue depth and program ID callback registry was intended
+   to make it intuitive and configurable for Energia/Arduino users.
 
 2. There is a function setModeTXonly(true/false) which will tailor Pkt's behavior
    during TX.  If this is false, the Pkt library will automatically issue
