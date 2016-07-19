@@ -8,5 +8,8 @@
     "url": "https://github.com/spirilis/msprf24.git"
   },
   "examples": "TESTPROGS/*/*.c",
-  "platforms": "timsp430"
+  "platforms": "timsp430",
+  "build": {
+    "srcFilter": "+<*.c>"
+  }  
 }
