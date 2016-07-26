@@ -635,6 +635,7 @@ uint8_t msprf24_current_state()
 void msprf24_powerdown()
 {
 	CE_DIS;
+	w_reg(RF24_STATUS, RF24_IRQ_MASK); // Clear all IRQs so the IRQ line isn't draining power during powerdown mode
 	msprf24_set_config(0);  // PWR_UP=0
 }
 
