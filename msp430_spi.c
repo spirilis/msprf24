@@ -203,7 +203,7 @@ uint16_t spi_transfer9(uint16_t inw)
 	if (inw & 0x0100)
 		P1OUT |= BIT7;
 	P1OUT |= BIT5;
-	if (P1IN & BIT4)
+	if (P1IN & BIT6)
 		retw |= 0x0100;
 	P1OUT &= ~BIT5;
 
