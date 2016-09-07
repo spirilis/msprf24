@@ -201,7 +201,7 @@ void tx_reuse_lastpayload()
 	CSN_DIS;
 }
 
-inline void pulse_ce()
+void pulse_ce()
 {
 	CE_EN;
 	__delay_cycles(DELAY_CYCLES_15US);
