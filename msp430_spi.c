@@ -600,6 +600,9 @@ void spi_init()
 	#if defined(__MSP430FR5739__)
 	
 	#endif
+	#if defined(__MSP430FR4133)
+	P1SEL0 |= BIT0 | BIT1 | BIT2;
+	#endif
 
 	/* USCI_A specific SPI setup */
 	UCA0CTLW0 |= UCSWRST;
@@ -671,6 +674,39 @@ uint16_t spi_transfer9(uint16_t inw)
 	P2OUT = p2out_save;
 	P1REN = p1ren_save;
 	P2REN = p2ren_save;
+
+	retw |= spi_transfer( (uint8_t)(inw & 0x00FF) );
+	return retw;
+}
+#endif
+#ifdef __MSP430FR4133
+uint16_t spi_transfer9(uint16_t inw)
+{
+	uint8_t p1dir_save, p1out_save, p1ren_save;
+	uint16_t retw=0;
+
+	/* Reconfigure I/O ports for bitbanging the MSB */
+	p1ren_save = P1REN; p1out_save = P1OUT; p1dir_save = P1DIR;
+
+	P1REN &= ~(BIT0 | BIT1 | BIT2);
+	P1OUT &= ~(BIT0 | BIT1 | BIT2);
+	P1DIR = (P1DIR & ~(BIT0 | BIT1 | BIT2)) | BIT0 | BIT2;
+	P1SEL0 &= ~(BIT0 | BIT1 | BIT2);
+
+	// Perform single-bit transfer
+	if (inw & 0x0100)
+		P1OUT |= BIT0;
+	P1OUT |= BIT2;
+	if (P1IN & BIT1)
+		retw |= 0x0100;
+	P1OUT &= ~BIT2;
+
+	// Restore port states and continue with 8-bit SPI
+	P1SEL0 |= BIT0 | BIT1 | BIT2;
+
+	P1DIR = p1dir_save;
+	P1OUT = p1out_save;
+	P1REN = p1ren_save;
 
 	retw |= spi_transfer( (uint8_t)(inw & 0x00FF) );
 	return retw;
@@ -771,6 +807,9 @@ void spi_init()
 	#if defined(__MSP430FR5739__)
 	
 	#endif
+	#if defined(__MSP430FR4133)
+	P5SEL0 |= BIT1 | BIT2 | BIT3;
+	#endif
 
 	/* USCI_B specific SPI setup */
 	UCB0CTLW0 |= UCSWRST;
@@ -847,5 +886,39 @@ uint16_t spi_transfer9(uint16_t inw)
 	return retw;
 }
 #endif
+#ifdef __MSP430FR4133
+uint16_t spi_transfer9(uint16_t inw)
+{
+	uint8_t p5dir_save, p5out_save, p5ren_save;
+	uint16_t retw=0;
+
+	/* Reconfigure I/O ports for bitbanging the MSB */
+	p5ren_save = P5REN; p5out_save = P5OUT; p5dir_save = P5DIR;
+
+	P5REN &= ~(BIT1 | BIT2 | BIT3);
+	P5OUT &= ~(BIT1 | BIT2 | BIT3);
+	P5DIR = (P1DIR & ~(BIT1 | BIT2 | BIT3)) | BIT1 | BIT2;
+	P5SEL0 &= ~(BIT1 | BIT2 | BIT3);
+
+	// Perform single-bit transfer
+	if (inw & 0x0100)
+		P5OUT |= BIT2;
+	P5OUT |= BIT1;
+	if (P5IN & BIT3)
+		retw |= 0x0100;
+	P5OUT &= ~BIT1;
+
+	// Restore port states and continue with 8-bit SPI
+	P5SEL0 |= BIT1 | BIT2 | BIT3;
+
+	P5DIR = p5dir_save;
+	P5OUT = p5out_save;
+	P5REN = p5ren_save;
+
+	retw |= spi_transfer( (uint8_t)(inw & 0x00FF) );
+	return retw;
+}
+#endif
+
 
 #endif
